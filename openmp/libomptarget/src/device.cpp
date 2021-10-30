@@ -617,6 +617,18 @@ int32_t DeviceTy::runTeamRegion(void *TgtEntryPtr, void **TgtVarsPtr,
                                       ThreadLimit, LoopTripCount, AsyncInfo);
 }
 
+int32_t DeviceTy::runKernel(void *TgtEntryPtr, void **TgtVarsPtr,
+                            int32_t GridDimX, int32_t GridDimY,
+                            int32_t GridDimZ, int32_t BlockDimX,
+                            int32_t BlockDimY, int32_t BlockDimZ,
+                            size_t SharedMem, AsyncInfoTy &AsyncInfo) {
+  if (!RTL->run_kernel_async)
+    return OFFLOAD_FAIL;
+  return RTL->run_kernel_async(RTLDeviceID, TgtEntryPtr, TgtVarsPtr, GridDimX,
+                               GridDimY, GridDimZ, BlockDimX, BlockDimY,
+                               BlockDimZ, SharedMem, AsyncInfo);
+}
+
 // Whether data can be copied to DstDevice directly
 bool DeviceTy::isDataExchangable(const DeviceTy &DstDevice) {
   if (RTL != DstDevice.RTL || !RTL->is_data_exchangable)
