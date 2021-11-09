@@ -49,7 +49,18 @@ enum cudaError {
   cudaErrorInvalidDevice = 101
 } cudaError_t;
 
-cudaError_t cudaGetLastError() { return cudaSuccess; }
+// Keeps track of the last error produced
+cudaError_t lastError = cudaSuccess;
+
+// Returns the last error that has been produced and resets it to cudaSuccess
+cudaError_t cudaGetLastError() {
+  cudaError_t tempError = lastError;
+  lastError = cudaSuccess;
+  return tempError;
+}
+
+// Returns the laste error from a runtime call
+cudaError_t cudaPeekAtLastError() { return lastError; }
 
 const char *cudaGetErrorString(cudaError_t error) {
   switch (error) {
@@ -100,6 +111,7 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
   int num_devices = omp_get_num_devices();
 
   if (count < 0 || num_devices < 1) {
+    lastError = cudaErrorInvalidValue;
     return cudaErrorInvalidValue;
   }
 
@@ -122,9 +134,11 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
   // omp_target_memcpy returns 0 on success and non-zero on failure
   if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
                         src_device_num)) {
+    lastError = cudaErrorMemoryAllocation;
     return cudaErrorMemoryAllocation;
   }
 
+  lastError = cudaErrorMemoryAllocation;
   return cudaSuccess;
 }
 
@@ -134,6 +148,7 @@ cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
   int num_devices = omp_get_num_devices();
 
   if (count < 0 || num_devices < 1) {
+    lastError = cudaErrorInvalidValue;
     return cudaErrorInvalidValue;
   }
 
@@ -156,9 +171,11 @@ cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
   // omp_target_memcpy returns 0 on success and non-zero on failure
   if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
                         src_device_num)) {
+    lastError = cudaErrorMemoryAllocation;
     return cudaErrorMemoryAllocation;
   }
 
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
@@ -175,11 +192,14 @@ cudaError_t cudaThreadSynchronize() {
     }
     synced_kernels.compare_exchange_strong(kernel_first, kernel_last);
   }
+
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
 cudaError_t cudaFree(void *devPtr) {
   if (omp_get_num_devices() < 1) {
+    lastError = cudaErrorNoDevice;
     return cudaErrorNoDevice;
   }
 
@@ -187,18 +207,21 @@ cudaError_t cudaFree(void *devPtr) {
 
   omp_target_free(devPtr, omp_get_default_device());
 
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
 cudaError_t cudaGetDeviceCount(int *count) {
 
   *count = omp_get_num_devices();
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
 cudaError_t cudaSetDevice(int device) {
 
   omp_set_default_device(device);
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
@@ -209,6 +232,7 @@ cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
     ptr[i] = value;
   }
 
+  lastError = cudaSuccess;
   return cudaSuccess;
 }
 
