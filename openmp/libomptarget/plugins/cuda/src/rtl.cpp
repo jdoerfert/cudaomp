@@ -1082,19 +1082,23 @@ public:
 
     KernelTy *KernelInfo = reinterpret_cast<KernelTy *>(TgtEntryPtr);
 
-    bool OpenMPMode = TgtOffsets != nullptr;
-    bool IsSPMDMode = !OpenMPMode;
-    bool IsGenericMode = !IsSPMDMode;
-    bool IsSPMDGenericMode = false;
+    bool IsOpenMPMode =
+        !(KernelInfo->ExecutionMode == llvm::omp::OMP_TGT_EXEC_MODE_CUDA);
+
+    bool IsSPMDMode;
+    bool IsGenericMode;
+    bool IsSPMDGenericMode;
+
     unsigned CudaBlocksPerGrid = TeamNum;
     unsigned CudaThreadsPerBlock = ThreadLimit;
-    CUstream Stream = (CUstream)AsyncInfo;
+    CUstream Stream;
 
-    if (OpenMPMode) {
+    // Vectors used for OpenMP args.
+    std::vector<void *> Args(ArgNum);
+    std::vector<void *> Ptrs(ArgNum);
+
+    if (IsOpenMPMode) {
       // All args are references.
-      std::vector<void *> Args(ArgNum);
-      std::vector<void *> Ptrs(ArgNum);
-
       for (int I = 0; I < ArgNum; ++I) {
         Ptrs[I] = (void *)((intptr_t)TgtArgs[I] + TgtOffsets[I]);
         Args[I] = &Ptrs[I];
@@ -1197,6 +1201,13 @@ public:
 
       Stream = getStream(DeviceId, AsyncInfo);
     }
+    // CUDA kernel execution mode.
+    else {
+      IsSPMDMode = true;
+      IsGenericMode = false;
+      IsSPMDGenericMode = false;
+      Stream = (CUstream)AsyncInfo;
+    }
 
     if (CudaBlocksPerGrid > DeviceData[DeviceId].BlocksPerGrid) {
       DP("Capping number of teams to team limit %d\n",
@@ -1212,7 +1223,10 @@ public:
              : "(null)",
          CudaBlocksPerGrid, GridDimY, GridDimZ, CudaThreadsPerBlock, BlockDimY,
          BlockDimZ,
-         (!IsSPMDMode ? (IsGenericMode ? "Generic" : "SPMD-Generic") : "SPMD"));
+         (!IsOpenMPMode
+              ? "CUDA-SPMD"
+              : (!IsSPMDMode ? (IsGenericMode ? "Generic" : "SPMD-Generic")
+                             : "SPMD")));
 
     Err = cuLaunchKernel(KernelInfo->Func, CudaBlocksPerGrid, GridDimY,
                          GridDimZ, CudaThreadsPerBlock, BlockDimY, BlockDimZ,
