@@ -431,9 +431,18 @@ EXTERN int __tgt_kernel(int64_t device_id, const void *host_ptr, void **args,
       /* loc */ nullptr, device_id, const_cast<void *>(host_ptr),
       /* arg_num */ 0, /* args_base */ args, args,
       /* arg_sizes */ nullptr, /* arg_types */ nullptr, /* arg_names */ nullptr,
-      /* arg_mappers */ nullptr, grid_dim_x, block_dim_x, grid_dim_y,
-      grid_dim_z, block_dim_y, block_dim_z, sharedMem, stream,
+      /* arg_mappers */ nullptr, grid_dim_x, block_dim_x, sharedMem, grid_dim_y,
+      grid_dim_z, block_dim_y, block_dim_z, stream,
       /* IsNonOpenMPKernel */ true);
+}
+
+int __tgt_kernel_synchronize(int64_t device_id, void *Stream) {
+  TIMESCOPE();
+
+  // TODO: fix, StreamManager.
+  DeviceTy &Device = *PM->Devices[device_id];
+  AsyncInfoTy AsyncInfo(Device, Stream);
+  return Device.synchronize(AsyncInfo);
 }
 
 // Get the current number of components for a user-defined mapper.

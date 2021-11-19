@@ -903,9 +903,13 @@ public:
           return nullptr;
         }
       } else {
-        DP("Loading global exec_mode '%s' - symbol missing, using default "
-           "value GENERIC (1)\n",
-           ExecModeName);
+        if (E->flags & llvm::omp::OMP_TGT_EXEC_MODE_CUDA) {
+          DP("CUDA kernel detected, setting execution mode to CUDA-SPMD\n");
+          ExecModeVal = llvm::omp::OMP_TGT_EXEC_MODE_CUDA;
+        } else
+          DP("Loading global exec_mode '%s' - symbol missing, using default "
+             "value GENERIC (1)\n",
+             ExecModeName);
       }
 
       KernelsList.emplace_back(Func, ExecModeVal);

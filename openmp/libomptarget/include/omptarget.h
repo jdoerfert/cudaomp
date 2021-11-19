@@ -353,6 +353,8 @@ int __tgt_kernel(int64_t device_id, const void *host_ptr, void **args,
                  int32_t block_dim_x, int32_t block_dim_y, int32_t block_dim_z,
                  size_t SharedMem, void *Stream);
 
+int __tgt_kernel_synchronize(int64_t device_id, void *Stream);
+
 int __tgt_target_teams_nowait_mapper(
     ident_t *loc, int64_t device_id, void *host_ptr, int32_t arg_num,
     void **args_base, void **args, int64_t *arg_sizes, int64_t *arg_types,
