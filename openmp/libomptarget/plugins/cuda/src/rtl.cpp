@@ -903,7 +903,7 @@ public:
           return nullptr;
         }
       } else {
-        if (E->flags & llvm::omp::OMP_TGT_EXEC_MODE_CUDA) {
+        if (E->reserved & llvm::omp::OMP_TGT_EXEC_MODE_CUDA) {
           DP("CUDA kernel detected, setting execution mode to CUDA-SPMD\n");
           ExecModeVal = llvm::omp::OMP_TGT_EXEC_MODE_CUDA;
         } else
