@@ -197,6 +197,33 @@ void __cudaUnregisterFatBinary(void *handle){
   __tgt_unregister_lib(&__bin_desc);
 }
 
+void __cudaRegisterVar(
+        void **fatCubinHandle,
+        char  *hostVar,
+        char  *deviceVar,
+  const char  *nameVar,
+        int    ext,
+        int    size,
+        int    constant,
+        int    global
+) {
+  DEBUGP("===> __cudaRegisterVar\n");
+/*   DEBUGP("           fatCubinHandle is %p \n", fatCubinHandle);
+  DEBUGP("           hostVar is %p \n", hostVar);
+  DEBUGP("           deviceVar is %s \n", deviceVar);
+  DEBUGP("           nameVar is %s \n", nameVar);
+  DEBUGP("           ext is %d \n", ext);
+  DEBUGP("           size is %d \n", size);
+  DEBUGP("           constant is %d \n", constant);
+  DEBUGP("           global is %d \n", global); */
+  __offload_entries[__offload_entries_counter].addr = (void *)hostVar;
+  __offload_entries[__offload_entries_counter].name = deviceVar;
+  __offload_entries[__offload_entries_counter].size = size;
+  __offload_entries[__offload_entries_counter].flags = 0;
+  __offload_entries[__offload_entries_counter].reserved = OMP_TGT_EXEC_MODE_CUDA;
+  ++__offload_entries_counter;
+}
+
 }
 
 #endif
