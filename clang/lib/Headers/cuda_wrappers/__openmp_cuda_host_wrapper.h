@@ -62,7 +62,9 @@ struct __tgt_bin_desc {
   __tgt_offload_entry *HostEntriesBegin; // Begin of table with all host entries
   __tgt_offload_entry *HostEntriesEnd;   // End of table (non inclusive)
 };
+
 void __tgt_register_lib(__tgt_bin_desc *desc);
+void __tgt_unregister_lib(__tgt_bin_desc *desc);
 
 // This is CUDA specific, fatbin wrapper.
 struct __cuda_fatbin_wrapper_t {
@@ -84,6 +86,7 @@ enum OMPTgtExecModeFlags : int8_t {
 
 // TODO: do we need support for multiple device images?
 static struct __tgt_device_image __device_image;
+static struct __tgt_bin_desc __bin_desc;
 static struct __tgt_offload_entry __offload_entries[MAX_OFFLOAD_ENTRIES];
 static unsigned __offload_entries_counter = 0;
 
@@ -149,8 +152,8 @@ void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
   __offload_entries[__offload_entries_counter].name = deviceFun;
   __offload_entries[__offload_entries_counter].size = 0;
   // TODO: using flags to communicate CUDA exec mode. Is there a better way?
-  __offload_entries[__offload_entries_counter].flags = OMP_TGT_EXEC_MODE_CUDA;
-  __offload_entries[__offload_entries_counter].reserved = 0;
+  __offload_entries[__offload_entries_counter].flags = 0;
+  __offload_entries[__offload_entries_counter].reserved = OMP_TGT_EXEC_MODE_CUDA;
   ++__offload_entries_counter;
 }
 
@@ -184,13 +187,15 @@ void __cudaRegisterFatBinaryEnd(void **fatCubinHandle){
   // end function, after cuda_register_globals registers functions, vars.
   __device_image.EntriesBegin = &__offload_entries[0];
   __device_image.EntriesEnd = &__offload_entries[__offload_entries_counter];
-  __tgt_bin_desc BinDesc = {1, &__device_image, &__offload_entries[0],
+  __bin_desc = {1, &__device_image, &__offload_entries[0],
                             &__offload_entries[__offload_entries_counter]};
-  __tgt_register_lib(&BinDesc);
+  __tgt_register_lib(&__bin_desc);
 }
 
-// TODO: call tgt_unregister_lib.
-void __cudaUnregisterFatBinary(void *handle){}
+void __cudaUnregisterFatBinary(void *handle){
+  DEBUGP("===> __cudaUnregisterFatBinary\n");
+  __tgt_unregister_lib(&__bin_desc);
+}
 
 }
 
