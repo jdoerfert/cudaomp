@@ -144,7 +144,7 @@ int32_t __tgt_rtl_run_kernel_async(int32_t device_id, void *tgt_entry_ptr,
                                    void **tgt_args, int32_t grid_dim_x,
                                    int32_t grid_dim_y, int32_t grid_dim_z,
                                    int32_t block_dim_x, int32_t block_dim_y,
-                                   int32_t block_dim_z,
+                                   int32_t block_dim_z,  size_t shared_mem,
                                    __tgt_async_info *async_info_ptr);
 
 // Device synchronization. In case of success, return zero. Otherwise, return an

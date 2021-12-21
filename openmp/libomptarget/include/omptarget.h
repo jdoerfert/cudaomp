@@ -152,6 +152,7 @@ struct __tgt_async_info {
   // We assume to use this structure to do synchronization. In CUDA backend, it
   // is CUstream.
   void *Queue = nullptr;
+  bool isUserStream = false;
 };
 
 struct DeviceTy;
@@ -168,8 +169,10 @@ class AsyncInfoTy {
   __tgt_async_info AsyncInfo;
 
 public:
-  AsyncInfoTy(DeviceTy &Device, void *Stream = nullptr)
-      : Device(Device), AsyncInfo{Stream} {}
+  AsyncInfoTy(DeviceTy &Device, void *Stream = nullptr, bool userStream=false)
+      : Device(Device), AsyncInfo{Stream, userStream} {}
+// TODO: This de-constructor seams a little out of context for pure-cuda/hip execution.
+// We should not syncrhonize every time we exit the omp-scope.
   ~AsyncInfoTy() { synchronize(); }
 
   /// Implicit conversion to the __tgt_async_info which is used in the
