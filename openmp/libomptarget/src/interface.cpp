@@ -378,7 +378,7 @@ static int TargetEntryPoint(ident_t *loc, int64_t device_id, void *host_ptr,
   }
 
   DeviceTy &Device = *PM->Devices[device_id];
-  AsyncInfoTy AsyncInfo(Device, Stream);
+  AsyncInfoTy AsyncInfo(Device, Stream, IsNonOpenMPKernel);
   int rc = target(loc, Device, host_ptr, arg_num, args_base, args, arg_sizes,
                   arg_types, arg_names, arg_mappers, team_num, thread_limit,
                   true /*team*/, AsyncInfo, SharedMem, GridDimY, GridDimZ,
