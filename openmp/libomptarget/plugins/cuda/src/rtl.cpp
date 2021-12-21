@@ -1193,7 +1193,7 @@ public:
       IsSPMDMode = true;
       IsGenericMode = false;
       IsSPMDGenericMode = false;
-      Stream = (CUstream)AsyncInfo;
+      Stream = (CUstream) AsyncInfo->Queue;
     }
 
     INFO(OMP_INFOTYPE_PLUGIN_KERNEL, DeviceId,
@@ -1224,6 +1224,13 @@ public:
   int synchronize(const int DeviceId, __tgt_async_info *AsyncInfo) const {
     CUstream Stream = reinterpret_cast<CUstream>(AsyncInfo->Queue);
     CUresult Err = cuStreamSynchronize(Stream);
+    //In the case of a user created stream we return.
+    //The user should explicitly destroy streams etc.
+    if ( AsyncInfo->isUserStream ){
+      //Set to null the runtime copy of the stream.
+      AsyncInfo->Queue = nullptr;
+      return (Err == CUDA_SUCCESS) ? OFFLOAD_SUCCESS : OFFLOAD_FAIL;
+    }
 
     // Once the stream is synchronized, return it to stream pool and reset
     // AsyncInfo. This is to make sure the synchronization only works for its
@@ -1596,7 +1603,7 @@ int32_t __tgt_rtl_run_kernel_async(int32_t device_id, void *tgt_entry_ptr,
                                    void **tgt_args, int32_t grid_dim_x,
                                    int32_t grid_dim_y, int32_t grid_dim_z,
                                    int32_t block_dim_x, int32_t block_dim_y,
-                                   int32_t block_dim_z,
+                                   int32_t block_dim_z, size_t shared_mem,
                                    __tgt_async_info *async_info_ptr) {
   assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
 
