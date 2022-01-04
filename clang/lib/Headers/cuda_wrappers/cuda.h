@@ -6,6 +6,10 @@
 #include <omp.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+
+#include "cuda_types.h"
+#include "__openmp_cuda_host_wrapper.h"
 
 #define __host__ __attribute__((host))
 #define __device__ __attribute__((device))
@@ -14,117 +18,16 @@
 #define __constant__ __attribute__((constant))
 #define __managed__ __attribute__((managed))
 
-typedef struct uint3 {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
-} uint3;
-
-typedef struct dim3 {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
-  dim3(unsigned int _x = 1, unsigned int _y = 1, unsigned int _z = 1)
-      : x(_x), y(_y), z(_z) {}
-
-} dim3;
-
-typedef struct cudaDeviceProp {
-  char name[256];
-  cudaUUID_t uuid;
-  size_t totalGlobalMem;
-  size_t sharedMemPerBlock;
-  int regsPerBlock;
-  int warpSize;
-  size_t memPitch;
-  int maxThreadsPerBlock;
-  int maxThreadsDim[3];
-  int maxGridSize[3];
-  int clockRate;
-  size_t totalConstMem;
-  int major;
-  int minor;
-  size_t textureAlignment;
-  size_t texturePitchAlignment;
-  int deviceOverlap;
-  int multiProcessorCount;
-  int kernelExecTimeoutEnabled;
-  int integrated;
-  int canMapHostMemory;
-  int computeMode;
-  int maxTexture1D;
-  int maxTexture1DMipmap;
-  int maxTexture1DLinear;
-  int maxTexture2D[2];
-  int maxTexture2DMipmap[2];
-  int maxTexture2DLinear[3];
-  int maxTexture2DGather[2];
-  int maxTexture3D[3];
-  int maxTexture3DAlt[3];
-  int maxTextureCubemap;
-  int maxTexture1DLayered[2];
-  int maxTexture2DLayered[3];
-  int maxTextureCubemapLayered[2];
-  int maxSurface1D;
-  int maxSurface2D[2];
-  int maxSurface3D[3];
-  int maxSurface1DLayered[2];
-  int maxSurface2DLayered[3];
-  int maxSurfaceCubemap;
-  int maxSurfaceCubemapLayered[2];
-  size_t surfaceAlignment;
-  int concurrentKernels;
-  int ECCEnabled;
-  int pciBusID;
-  int pciDeviceID;
-  int pciDomainID;
-  int tccDriver;
-  int asyncEngineCount;
-  int unifiedAddressing;
-  int memoryClockRate;
-  int memoryBusWidth;
-  int l2CacheSize;
-  int persistingL2CacheMaxSize;
-  int maxThreadsPerMultiProcessor;
-  int streamPrioritiesSupported;
-  int globalL1CacheSupported;
-  int localL1CacheSupported;
-  size_t sharedMemPerMultiprocessor;
-  int regsPerMultiprocessor;
-  int managedMemory;
-  int isMultiGpuBoard;
-  int multiGpuBoardGroupID;
-  int singleToDoublePrecisionPerfRatio;
-  int pageableMemoryAccess;
-  int concurrentManagedAccess;
-  int computePreemptionSupported;
-  int canUseHostPointerForRegisteredMem;
-  int cooperativeLaunch;
-  int cooperativeMultiDeviceLaunch;
-  int pageableMemoryAccessUsesHostPageTables;
-  int directManagedMemAccessFromHost;
-  int accessPolicyMaxWindowSize;
-} cudaDeviceProp;
-
-typedef cudaStream_t unsigned = 0;
+//typedef cudaStream_t unsigned = 0;
 
 static int *kernels = nullptr;
 static std::atomic<unsigned long> num_kernels = {0};
 static std::atomic<unsigned long> synced_kernels = {0};
 
-#pragma omp begin declare target
-__constant__ dim3 grid;
-__constant__ dim3 block;
-#pragma omp end declare target
-
-enum cudaError {
-
-  cudaSuccess = 0,
-  cudaErrorInvalidValue = 1,
-  cudaErrorMemoryAllocation = 2,
-  cudaErrorNoDevice = 100,
-  cudaErrorInvalidDevice = 101
-} cudaError_t;
+//#pragma omp begin declare target
+//__constant__ dim3 grid;
+//__constant__ dim3 block;
+//#pragma omp end declare target
 
 // Keeps track of the last error produced
 cudaError_t lastError = cudaSuccess;
@@ -141,7 +44,7 @@ cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
   }
 
   // set some of the properties
-  prop->name = "OpenMP device";
+  strncpy(prop->name, "OpenMP device", 256);
 
   lastError = cudaSuccess;
   return cudaSuccess;
@@ -326,7 +229,7 @@ cudaError_t cudaSetDevice(int device) {
 }
 
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
-  unsigned char *ptr = devPtr;
+  unsigned char *ptr = (unsigned char*) devPtr;
 #pragma omp target teams distribute parallel for is_device_ptr(ptr)
   for (int i = 0; i < count; ++i) {
     ptr[i] = value;
@@ -335,5 +238,4 @@ cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
   lastError = cudaSuccess;
   return cudaSuccess;
 }
-
 #endif
