@@ -155,6 +155,8 @@ set(cuda_wrapper_files
   cuda_wrappers/complex
   cuda_wrappers/new
   cuda_wrappers/__openmp_cuda_host_wrapper.h
+  cuda_wrappers/cuda.h
+  cuda_wrappers/cuda_types.h
 )
 
 set(ppc_wrapper_files
