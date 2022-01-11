@@ -154,10 +154,16 @@ set(cuda_wrapper_files
   cuda_wrappers/algorithm
   cuda_wrappers/complex
   cuda_wrappers/new
-  cuda_wrappers/__openmp_cuda_host_wrapper.h
-  cuda_wrappers/cuda.h
-  cuda_wrappers/cuda_types.h
 )
+
+set(cuda_omp_files
+  cuda_wrappers/cudaomp/__openmp_cuda_host_wrapper.h
+  cuda_wrappers/cudaomp/cuda.h
+  cuda_wrappers/cudaomp/fatbinary_cuda.h
+  cuda_wrappers/cudaomp/internal_types.h
+  cuda_wrappers/cudaomp/cuda_runtime_api.h
+)
+
 
 set(ppc_wrapper_files
   ppc_wrappers/mmintrin.h
@@ -213,7 +219,7 @@ endfunction(clang_generate_header)
 
 
 # Copy header files from the source directory to the build directory
-foreach( f ${files} ${cuda_wrapper_files} ${ppc_wrapper_files} ${openmp_wrapper_files})
+foreach( f ${files} ${cuda_wrapper_files} ${ppc_wrapper_files} ${openmp_wrapper_files} ${cuda_omp_files})
   copy_header_to_output_dir(${CMAKE_CURRENT_SOURCE_DIR} ${f})
 endforeach( f )
 
@@ -257,6 +263,12 @@ install(
   FILES ${cuda_wrapper_files}
   DESTINATION ${header_install_dir}/cuda_wrappers
   COMPONENT clang-resource-headers)
+
+install(
+  FILES ${cuda_omp_files}
+  DESTINATION ${header_install_dir}/cuda_wrappers/cuda_omp_files
+  COMPONENT clang-resource-headers)
+
 
 install(
   FILES ${ppc_wrapper_files}

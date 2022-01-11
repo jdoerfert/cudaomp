@@ -293,6 +293,17 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     CC1Args.push_back(DriverArgs.MakeArgString(P));
   }
 
+  if ( DriverArgs.hasArg(options::OPT_cudaomp) ){
+    SmallString<128> P(D.ResourceDir);
+    llvm::sys::path::append(P, "include");
+    llvm::sys::path::append(P, "cuda_wrappers/cuda_omp_files");
+    CC1Args.push_back("-internal-isystem");
+    CC1Args.push_back(DriverArgs.MakeArgString(P));
+
+    CC1Args.push_back("-include");
+    CC1Args.push_back("__openmp_cuda_host_wrapper.h");
+  }
+
   if (DriverArgs.hasArg(options::OPT_nogpuinc))
     return;
 
@@ -301,11 +312,6 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     return;
   }
 
-  CC1Args.push_back("-include");
-  CC1Args.push_back("__clang_cuda_runtime_wrapper.h");
-
-  CC1Args.push_back("-include");
-  CC1Args.push_back("__openmp_cuda_host_wrapper.h");
 }
 
 void CudaInstallationDetector::CheckCudaVersionSupportsArch(
@@ -819,7 +825,10 @@ void CudaToolChain::adjustDebugInfoKind(
 void CudaToolChain::AddCudaIncludeArgs(const ArgList &DriverArgs,
                                        ArgStringList &CC1Args) const {
   // Check our CUDA version if we're going to include the CUDA headers.
-  if (!DriverArgs.hasArg(options::OPT_nogpuinc) &&
+  // In the case of cudaomp we are woring as if the flag nogpuinc is set.
+  // We are not going to use the system cuda paths. We will use the ones
+  // cudaomp provides
+  if (!(DriverArgs.hasArg(options::OPT_nogpuinc) || DriverArgs.hasArg(options::OPT_cudaomp)) &&
       !DriverArgs.hasArg(options::OPT_no_cuda_version_check)) {
     StringRef Arch = DriverArgs.getLastArgValue(options::OPT_march_EQ);
     assert(!Arch.empty() && "Must have an explicit GPU arch.");
@@ -888,8 +897,11 @@ CudaToolChain::GetCXXStdlibType(const ArgList &Args) const {
 void CudaToolChain::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
                                               ArgStringList &CC1Args) const {
   HostTC.AddClangSystemIncludeArgs(DriverArgs, CC1Args);
-
-  if (!DriverArgs.hasArg(options::OPT_nogpuinc) && CudaInstallation.isValid())
+  // In the case of cudaomp we don't want to include the cuda header files.
+  // we provide our own
+  if (!(DriverArgs.hasArg(options::OPT_nogpuinc) || 
+        DriverArgs.hasArg(options::OPT_cudaomp)) && 
+        CudaInstallation.isValid())
     CC1Args.append(
         {"-internal-isystem",
          DriverArgs.MakeArgString(CudaInstallation.getIncludePath())});
