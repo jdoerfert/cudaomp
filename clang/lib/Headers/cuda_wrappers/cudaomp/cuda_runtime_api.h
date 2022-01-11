@@ -1,36 +1,95 @@
-#ifndef __CUDA_H__
-#define __CUDA_H__
+#ifndef __CUDA_RUNTIME_API__
+#define __CUDA_RUNTIME_API__
 
-#include <assert.h>
 #include <atomic>
-#include <omp.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
+#include <omp.h>
 
-#include "cuda_types.h"
-#include "__openmp_cuda_host_wrapper.h"
+#include "internal_types.h"
 
-#define __host__ __attribute__((host))
-#define __device__ __attribute__((device))
-#define __global__ __attribute__((global))
-#define __shared__ __attribute__((shared))
-#define __constant__ __attribute__((constant))
-#define __managed__ __attribute__((managed))
+typedef struct cudaDeviceProp {
+  char name[256];
+  cudaUUID_t uuid;
+  size_t totalGlobalMem;
+  size_t sharedMemPerBlock;
+  int regsPerBlock;
+  int warpSize;
+  size_t memPitch;
+  int maxThreadsPerBlock;
+  int maxThreadsDim[3];
+  int maxGridSize[3];
+  int clockRate;
+  size_t totalConstMem;
+  int major;
+  int minor;
+  size_t textureAlignment;
+  size_t texturePitchAlignment;
+  int deviceOverlap;
+  int multiProcessorCount;
+  int kernelExecTimeoutEnabled;
+  int integrated;
+  int canMapHostMemory;
+  int computeMode;
+  int maxTexture1D;
+  int maxTexture1DMipmap;
+  int maxTexture1DLinear;
+  int maxTexture2D[2];
+  int maxTexture2DMipmap[2];
+  int maxTexture2DLinear[3];
+  int maxTexture2DGather[2];
+  int maxTexture3D[3];
+  int maxTexture3DAlt[3];
+  int maxTextureCubemap;
+  int maxTexture1DLayered[2];
+  int maxTexture2DLayered[3];
+  int maxTextureCubemapLayered[2];
+  int maxSurface1D;
+  int maxSurface2D[2];
+  int maxSurface3D[3];
+  int maxSurface1DLayered[2];
+  int maxSurface2DLayered[3];
+  int maxSurfaceCubemap;
+  int maxSurfaceCubemapLayered[2];
+  size_t surfaceAlignment;
+  int concurrentKernels;
+  int ECCEnabled;
+  int pciBusID;
+  int pciDeviceID;
+  int pciDomainID;
+  int tccDriver;
+  int asyncEngineCount;
+  int unifiedAddressing;
+  int memoryClockRate;
+  int memoryBusWidth;
+  int l2CacheSize;
+  int persistingL2CacheMaxSize;
+  int maxThreadsPerMultiProcessor;
+  int streamPrioritiesSupported;
+  int globalL1CacheSupported;
+  int localL1CacheSupported;
+  size_t sharedMemPerMultiprocessor;
+  int regsPerMultiprocessor;
+  int managedMemory;
+  int isMultiGpuBoard;
+  int multiGpuBoardGroupID;
+  int singleToDoublePrecisionPerfRatio;
+  int pageableMemoryAccess;
+  int concurrentManagedAccess;
+  int computePreemptionSupported;
+  int canUseHostPointerForRegisteredMem;
+  int cooperativeLaunch;
+  int cooperativeMultiDeviceLaunch;
+  int pageableMemoryAccessUsesHostPageTables;
+  int directManagedMemAccessFromHost;
+  int accessPolicyMaxWindowSize;
+} cudaDeviceProp;
 
-//typedef cudaStream_t unsigned = 0;
-
+//Declarations of global variables
+cudaError_t lastError = cudaSuccess;
 static int *kernels = nullptr;
 static std::atomic<unsigned long> num_kernels = {0};
 static std::atomic<unsigned long> synced_kernels = {0};
-
-//#pragma omp begin declare target
-//__constant__ dim3 grid;
-//__constant__ dim3 block;
-//#pragma omp end declare target
-
-// Keeps track of the last error produced
-cudaError_t lastError = cudaSuccess;
 
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
 
@@ -57,7 +116,6 @@ cudaError_t cudaGetLastError() {
   return tempError;
 }
 
-// Returns the laste error from a runtime call
 cudaError_t cudaPeekAtLastError() { return lastError; }
 
 const char *cudaGetErrorString(cudaError_t error) {
@@ -82,14 +140,42 @@ const char *cudaGetErrorString(cudaError_t error) {
   return nullptr;
 }
 
-/// used in cudaMemcpy to specify the copy direction
-enum cudaMemcpyKind {
-  cudaMemcpyHostToHost = 0,
-  cudaMemcpyHostToDevice = 1,
-  cudaMemcpyDeviceToHost = 2,
-  cudaMemcpyDeviceToDevice = 3,
-  cudaMemcpyDefault = 4
-};
+// TODO
+inline cudaError_t cudaDeviceSynchronize() {
+  DEBUGP("===> TODO cudaDeviceSynchronize\n");
+  return cudaError_t(0);
+}
+
+// TODO, fix tgt_kernel_synchronize
+inline cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
+  DEBUGP("===> TODO FIX cudaStreamSynchronize\n");
+  __tgt_kernel_synchronize(omp_get_default_device(), stream);
+}
+
+cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
+  unsigned char *ptr = (unsigned char*) devPtr;
+#pragma omp target teams distribute parallel for is_device_ptr(ptr)
+  for (int i = 0; i < count; ++i) {
+    ptr[i] = value;
+  }
+
+  lastError = cudaSuccess;
+  return cudaSuccess;
+}
+
+cudaError_t cudaFree(void *devPtr) {
+  if (omp_get_num_devices() < 1) {
+    lastError = cudaErrorNoDevice;
+    return cudaErrorNoDevice;
+  }
+
+  cudaDeviceSynchronize();
+
+  omp_target_free(devPtr, omp_get_default_device());
+
+  lastError = cudaSuccess;
+  return cudaSuccess;
+}
 
 cudaError_t cudaMalloc(void **devPtr, size_t size) {
   int num_devices = omp_get_num_devices();
@@ -178,7 +264,6 @@ cudaError_t cudaMemcpyAsync(void *dst, const void *src, size_t count,
 }
 
 cudaError_t cudaThreadSynchronize() {
-
   unsigned long kernel_first = synced_kernels;
   unsigned long kernel_last = num_kernels;
   if (kernel_first < kernel_last) {
@@ -195,21 +280,8 @@ cudaError_t cudaThreadSynchronize() {
   return cudaSuccess;
 }
 
-cudaError_t cudaFree(void *devPtr) {
-  if (omp_get_num_devices() < 1) {
-    lastError = cudaErrorNoDevice;
-    return cudaErrorNoDevice;
-  }
-
-  cudaDeviceSynchronize();
-
-  omp_target_free(devPtr, omp_get_default_device());
-
-  lastError = cudaSuccess;
-  return cudaSuccess;
-}
-
 cudaError_t cudaGetDevice(int *device) {
+
   *device = omp_get_default_device();
   return cudaSuccess;
 }
@@ -228,14 +300,4 @@ cudaError_t cudaSetDevice(int device) {
   return cudaSuccess;
 }
 
-cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
-  unsigned char *ptr = (unsigned char*) devPtr;
-#pragma omp target teams distribute parallel for is_device_ptr(ptr)
-  for (int i = 0; i < count; ++i) {
-    ptr[i] = value;
-  }
-
-  lastError = cudaSuccess;
-  return cudaSuccess;
-}
 #endif
