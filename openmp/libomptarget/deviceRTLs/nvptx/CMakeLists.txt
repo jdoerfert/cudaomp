@@ -153,6 +153,7 @@ set(cuda_src_files
   ${devicertl_common_directory}/src/sync.cu
   ${devicertl_common_directory}/src/task.cu
   ${devicertl_common_directory}/src/shuffle.cpp
+  ${devicertl_common_directory}/src/omp_math.cpp
   src/target_impl.cu
 )
 
@@ -215,6 +216,8 @@ foreach(sm ${nvptx_sm_list})
 
     list(APPEND bc_files ${outfile})
   endforeach()
+
+  list(APPEND bc_files "${CUDA_TOOLKIT_ROOT_DIR}/${LIBOMPTARGET_CUDA_LIBDEVICE_SUBDIR}/libdevice.10.bc")
 
   set(bclib_name "libomptarget-nvptx-sm_${sm}.bc")
 
