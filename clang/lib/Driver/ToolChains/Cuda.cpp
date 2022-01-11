@@ -312,6 +312,11 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     return;
   }
 
+  if ( !DriverArgs.hasArg(options::OPT_cudaomp) ){
+    CC1Args.push_back("-include");
+    CC1Args.push_back("__clang_cuda_runtime_wrapper.h");
+  }
+
 }
 
 void CudaInstallationDetector::CheckCudaVersionSupportsArch(
