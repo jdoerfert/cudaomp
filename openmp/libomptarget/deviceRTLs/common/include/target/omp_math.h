@@ -194,7 +194,4 @@ float y1f(float __a);
 double yn(int __a, double __b);
 float ynf(int __a, float __b);;
 
-// Declaration of other used functions (built-ins?).
-long labs(long);
-
 #endif

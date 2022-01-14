@@ -16,15 +16,13 @@
 #include "target/omp_math.h"
 
 #define USED __attribute__((used))
-#define OVERLOADABLE  __attribute__((overloadable))
 
 #pragma omp declare target
 
 
 extern "C" {
 
-INLINE USED OVERLOADABLE int __nv_abs(int __a) { return abs(__a); }
-INLINE USED OVERLOADABLE long __nv_abs(long __a) { return labs(__a); };
+INLINE USED int __nv_abs(int __a) { return abs(__a); }
 INLINE USED double __nv_fabs(double __a) { return fabs(__a); }
 INLINE USED double __nv_acos(double __a) { return acos(__a); }
 INLINE USED float __nv_acosf(float __a) { return acosf(__a); }
@@ -121,8 +119,7 @@ INLINE USED double __nv_ldexp(double __a, int __b) { return ldexp(__a, __b); }
 INLINE USED float __nv_ldexpf(float __a, int __b) { return ldexpf(__a, __b); }
 INLINE USED double __nv_lgamma(double __a) { return lgamma(__a); }
 INLINE USED float __nv_lgammaf(float __a) { return lgammaf(__a); }
-INLINE USED OVERLOADABLE long __nv_llabs(long __a) { return labs(__a); };
-INLINE USED OVERLOADABLE long long __nv_llabs(long long __a) { return llabs(__a); }
+INLINE USED long long __nv_llabs(long long __a) { return llabs(__a); }
 INLINE USED long long __nv_llmax(long long __a, long long __b) {
   return llmax(__a, __b);
 }
@@ -168,8 +165,9 @@ INLINE USED int __nv_max(int __a, int __b) { return max(__a, __b); }
 INLINE USED int __nv_min(int __a, int __b) { return min(__a, __b); }
 INLINE USED double __nv_modf(double __a, double *__b) { return modf(__a, __b); }
 INLINE USED float __nv_modff(float __a, float *__b) { return modff(__a, __b); }
-INLINE USED OVERLOADABLE double __builtin_nearbyint(double __a) { return nearbyint(__a); }
-INLINE USED OVERLOADABLE float __builtin_nearbyintf(float __a) { return nearbyintf(__a); }
+// TODO: fix builtins
+//INLINE USED double __builtin_nearbyint(double __a) { return nearbyint(__a); }
+//INLINE USED float __builtin_nearbyintf(float __a) { return nearbyintf(__a); }
 INLINE USED double __nv_nextafter(double __a, double __b) {
   return nextafter(__a, __b);
 }
