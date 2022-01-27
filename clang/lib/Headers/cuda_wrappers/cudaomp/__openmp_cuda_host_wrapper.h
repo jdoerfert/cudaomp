@@ -127,7 +127,7 @@ inline cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim,
 }
 
 
-void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
+__attribute__((weak)) __attribute__((noinline)) void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
                             char *deviceFun, const char *deviceName,
                             int thread_limit, uint3 *tid, uint3 *bid,
                             dim3 *bDim, dim3 *gDim, int *wSize) {
@@ -144,7 +144,7 @@ void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFun,
 }
 
 // TODO: return a pointer to an internal handle.
-void **__cudaRegisterFatBinary(void *fatCubin) {
+__attribute__((weak)) __attribute__((noinline)) void **__cudaRegisterFatBinary(void *fatCubin) {
   struct __cuda_fatbin_wrapper_t *header = (struct __cuda_fatbin_wrapper_t *)fatCubin;
   DEBUGP("===> magic %x\n", header->magic);
   struct fatBinaryHeader *header2 = (struct fatBinaryHeader *)header->gpu_binary;
@@ -167,7 +167,7 @@ void **__cudaRegisterFatBinary(void *fatCubin) {
   return nullptr;
 }
 
-void __cudaRegisterFatBinaryEnd(void **fatCubinHandle){
+__attribute__((weak)) __attribute__((noinline))void __cudaRegisterFatBinaryEnd(void **fatCubinHandle){
   DEBUGP("===> __cudaRegisterFatBinaryEnd\n");
   // The descriptor and call to tgt_register_lib should be done in this
   // end function, after cuda_register_globals registers functions, vars.
@@ -178,12 +178,12 @@ void __cudaRegisterFatBinaryEnd(void **fatCubinHandle){
   __tgt_register_lib(&__bin_desc);
 }
 
-void __cudaUnregisterFatBinary(void *handle){
+__attribute__((weak)) __attribute__((noinline))void __cudaUnregisterFatBinary(void *handle){
   DEBUGP("===> __cudaUnregisterFatBinary\n");
   __tgt_unregister_lib(&__bin_desc);
 }
 
-void __cudaRegisterVar(
+__attribute__((weak)) __attribute__((noinline)) void __cudaRegisterVar(
         void **fatCubinHandle,
         char  *hostVar,
         char  *deviceVar,
@@ -209,6 +209,7 @@ void __cudaRegisterVar(
   __offload_entries[__offload_entries_counter].reserved = OMP_TGT_EXEC_MODE_CUDA;
   ++__offload_entries_counter;
 }
+
 
 }
 
