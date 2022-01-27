@@ -248,7 +248,10 @@ inline __device__ unsigned int
 __match64_all_sync(unsigned int mask, unsigned long long value, int *pred) {
   return __nvvm_match_all_sync_i64p(mask, value, pred);
 }
+
+#ifndef __CUDAOMP__
 #include "crt/sm_70_rt.hpp"
+#endif
 
 #endif // !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700
 #endif // __CUDA_VERSION >= 9000

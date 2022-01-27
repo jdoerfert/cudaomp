@@ -300,10 +300,12 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     CC1Args.push_back("-internal-isystem");
     CC1Args.push_back(DriverArgs.MakeArgString(P));
 
+    CC1Args.push_back("-D__CUDAOMP__");
     CC1Args.push_back("-include");
     CC1Args.push_back("__openmp_cuda_host_wrapper.h");
     CC1Args.push_back("-include");
-    CC1Args.push_back("__clang_cuda_builtin_vars.h");
+    CC1Args.push_back("__clang_cuda_runtime_wrapper.h");
+//    CC1Args.push_back("__clang_cuda_builtin_vars.h");
   }
 
   if (DriverArgs.hasArg(options::OPT_nogpuinc))

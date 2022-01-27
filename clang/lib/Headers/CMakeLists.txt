@@ -162,6 +162,10 @@ set(cuda_omp_files
   cuda_wrappers/cudaomp/fatbinary_cuda.h
   cuda_wrappers/cudaomp/internal_types.h
   cuda_wrappers/cudaomp/cuda_runtime_api.h
+  cuda_wrappers/cudaomp/vector_types.h
+  cuda_wrappers/cudaomp/host_defines.h
+  cuda_wrappers/cudaomp/vector_functions.h
+  cuda_wrappers/cudaomp/vector_functions.hpp
 )
 
 
@@ -266,7 +270,7 @@ install(
 
 install(
   FILES ${cuda_omp_files}
-  DESTINATION ${header_install_dir}/cuda_wrappers/cuda_omp_files
+  DESTINATION ${header_install_dir}/cuda_wrappers/cuda_omp_files/
   COMPONENT clang-resource-headers)
 
 
