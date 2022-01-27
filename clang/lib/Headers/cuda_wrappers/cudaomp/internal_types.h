@@ -5,19 +5,18 @@
 
 #define DEBUGP(...) printf(__VA_ARGS__)
 
-typedef struct uint3 {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
-} uint3;
+#define __host__ __attribute__((host))
+#define __device__ __attribute__((device))
+#define __global__ __attribute__((global))
+#define __shared__ __attribute__((shared))
+#define __constant__ __attribute__((constant))
+#define __managed__ __attribute__((managed))
 
-typedef struct dim3 {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
-  dim3(unsigned int _x = 1, unsigned int _y = 1, unsigned int _z = 1)
-      : x(_x), y(_y), z(_z) {}
-} dim3;
+#define __forceinline__ __inline__ __attribute__((always_inline))
+
+#include "vector_types.h"
+#include "vector_functions.h"
+
 
 struct CUuuid_st {
   char bytes[16];

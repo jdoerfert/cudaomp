@@ -21,6 +21,9 @@
 #include <cstdlib>
 #include <mutex>
 
+typedef uint64_t dim3;
+typedef uint64_t uint3 ;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// adds requires flags
 EXTERN void __tgt_register_requires(int64_t flags) {
@@ -486,7 +489,7 @@ EXTERN void __kmpc_push_target_tripcount_mapper(ident_t *loc, int64_t device_id,
   DP("__kmpc_push_target_tripcount(%" PRId64 ", %" PRIu64 ")\n", device_id,
      loop_tripcount);
   PM->TblMapMtx.lock();
-  PM->Devices[device_id]->LoopTripCnt.emplace(__kmpc_global_thread_num(NULL),
+  PM->Devices[device_id]->LoopTripCnt.emplace(__kmpc_global_thread_num(nullptr),
                                               loop_tripcount);
   PM->TblMapMtx.unlock();
 }

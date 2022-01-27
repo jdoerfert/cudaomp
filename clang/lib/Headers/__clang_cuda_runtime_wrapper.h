@@ -26,10 +26,17 @@
 #ifndef __CLANG_CUDA_RUNTIME_WRAPPER_H__
 #define __CLANG_CUDA_RUNTIME_WRAPPER_H__
 
+#define CUDA_VERSION 10010
+
 #if defined(__CUDA__) && defined(__clang__)
 
 // Include some forward declares that must come before cmath.
 #include <__clang_cuda_math_forward_declares.h>
+
+#ifdef __CUDAOMP__
+#include <__clang_cuda_builtin_vars.h>
+#include "cuda_wrappers/cuda_omp_files/internal_types.h"
+#endif
 
 // Define __CUDACC__ early as libstdc++ standard headers with GNU extensions
 // enabled depend on it to avoid using __float128, which is unsupported in
@@ -42,7 +49,10 @@
 #include <cstdlib>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #undef __CUDACC__
+
+#define __forceinline__ __inline__ 
 
 // Preserve common macros that will be changed below by us or by CUDA
 // headers.
@@ -93,12 +103,14 @@
 #define __CUDACC__
 #define __CUDA_LIBDEVICE__
 #endif
+#ifndef __CUDAOMP__
 // Disables definitions of device-side runtime support stubs in
 // cuda_device_runtime_api.h
 #include "host_defines.h"
 #undef __CUDACC__
 #include "driver_types.h"
 #include "host_config.h"
+#endif
 
 // Temporarily replace "nv_weak" with weak, so __attribute__((nv_weak)) in
 // cuda_device_runtime_api.h ends up being __attribute__((weak)) which is the
@@ -108,7 +120,9 @@
 #undef __CUDABE__
 #undef __CUDA_LIBDEVICE__
 #define __CUDACC__
+#ifndef __CUDAOMP__
 #include "cuda_runtime.h"
+#endif
 
 #pragma pop_macro("nv_weak")
 #undef __CUDACC__
@@ -120,9 +134,13 @@
 #define __nvvm_memset(d, c, n, a) __builtin_memset(d, c, n)
 
 #if CUDA_VERSION < 9000
+#ifndef __CUDAOMP__
 #include "crt/device_runtime.h"
 #endif
+#endif
+#ifndef __CUDAOMP__
 #include "crt/host_runtime.h"
+#endif
 // device_runtime.h defines __cxa_* macros that will conflict with
 // cxxabi.h.
 // FIXME: redefine these as __device__ functions.
@@ -191,7 +209,9 @@ inline __host__ double __signbitd(double x) {
 #pragma push_macro("__forceinline__")
 #define __forceinline__ __device__ __inline__ __attribute__((always_inline))
 #if CUDA_VERSION < 9000
+#ifndef __CUDAOMP__
 #include "device_functions.hpp"
+#endif
 #endif
 
 // math_function.hpp uses the __USE_FAST_MATH__ macro to determine whether we
@@ -205,16 +225,20 @@ inline __host__ double __signbitd(double x) {
 #define __USE_FAST_MATH__ 1
 #endif
 
+#ifndef __CUDAOMP__
 #if CUDA_VERSION >= 9000
 #include "crt/math_functions.hpp"
 #else
 #include "math_functions.hpp"
 #endif
+#endif
 
 #pragma pop_macro("__USE_FAST_MATH__")
 
+#ifndef __CUDAOMP__
 #if CUDA_VERSION < 9000
 #include "math_functions_dbl_ptx3.hpp"
+#endif
 #endif
 #pragma pop_macro("__forceinline__")
 
@@ -222,12 +246,15 @@ inline __host__ double __signbitd(double x) {
 // __CUDACC__ nor __CUDABE__ are defined.
 #undef __MATH_FUNCTIONS_HPP__
 #undef __CUDABE__
+#ifndef __CUDAOMP__
 #if CUDA_VERSION < 9000
 #include "math_functions.hpp"
+#endif
 #endif
 // Alas, additional overloads for these functions are hard to get to.
 // Considering that we only need these overloads for a few functions,
 // we can provide them here.
+#ifndef __CUDAOMP__
 static inline float rsqrt(float __a) { return rsqrtf(__a); }
 static inline float rcbrt(float __a) { return rcbrtf(__a); }
 static inline float sinpi(float __a) { return sinpif(__a); }
@@ -239,6 +266,7 @@ static inline float erfcinv(float __a) { return erfcinvf(__a); }
 static inline float normcdfinv(float __a) { return normcdfinvf(__a); }
 static inline float normcdf(float __a) { return normcdff(__a); }
 static inline float erfcx(float __a) { return erfcxf(__a); }
+#endif
 
 #if CUDA_VERSION < 9000
 // For some reason single-argument variant is not always declared by
@@ -254,6 +282,7 @@ static inline __device__ void __brkpt(int __c) { __brkpt(); }
 #define __host__
 #undef __CUDABE__
 #define __CUDACC__
+#ifndef __CUDAOMP__
 #if CUDA_VERSION >= 9000
 // Some atomic functions became compiler builtins in CUDA-9 , so we need their
 // declarations.
@@ -271,6 +300,7 @@ static inline __device__ void __brkpt(int __c) { __brkpt(); }
 #undef __CUDABE__
 #endif
 #include "sm_20_atomic_functions.hpp"
+#endif
 // Predicate functions used in `__builtin_assume` need to have no side effect.
 // However, sm_20_intrinsics.hpp doesn't define them with neither pure nor
 // const attribute. Rename definitions from sm_20_intrinsics.hpp and re-define
@@ -283,7 +313,9 @@ static inline __device__ void __brkpt(int __c) { __brkpt(); }
 #define __isShared __ignored_cuda___isShared
 #define __isConstant __ignored_cuda___isConstant
 #define __isLocal __ignored_cuda___isLocal
+#ifndef __CUDAOMP__
 #include "sm_20_intrinsics.hpp"
+#endif
 #pragma pop_macro("__isGlobal")
 #pragma pop_macro("__isShared")
 #pragma pop_macro("__isConstant")
@@ -303,7 +335,9 @@ __DEVICE__ unsigned int __isLocal(const void *p) {
   return __nvvm_isspacep_local(p);
 }
 #pragma pop_macro("__DEVICE__")
+#ifndef __CUDAOMP__
 #include "sm_32_atomic_functions.hpp"
+#endif
 
 // Don't include sm_30_intrinsics.h and sm_32_intrinsics.h.  These define the
 // __shfl and __ldg intrinsics using inline (volatile) asm, but we want to
@@ -316,8 +350,10 @@ __DEVICE__ unsigned int __isLocal(const void *p) {
 #if CUDA_VERSION >= 8000
 #pragma push_macro("__CUDA_ARCH__")
 #undef __CUDA_ARCH__
+#ifndef __CUDAOMP__
 #include "sm_60_atomic_functions.hpp"
 #include "sm_61_intrinsics.hpp"
+#endif
 #pragma pop_macro("__CUDA_ARCH__")
 #endif
 
@@ -345,10 +381,12 @@ __DEVICE__ unsigned int __isLocal(const void *p) {
 #endif
 #endif
 
+#ifndef __CUDAOMP__
 #if CUDA_VERSION >= 9000
 #include "crt/math_functions.hpp"
 #else
 #include "math_functions.hpp"
+#endif
 #endif
 #pragma pop_macro("_GLIBCXX_MATH_H")
 #pragma pop_macro("_LIBCPP_VERSION")
@@ -360,6 +398,7 @@ __DEVICE__ unsigned int __isLocal(const void *p) {
 // __clang_cuda_texture_intrinsics.h must be included first in order to provide
 // implementation for __nv_tex_surf_handler that CUDA's headers depend on.
 // The implementation requires c++11 and only works with CUDA-9 or newer.
+#ifndef __CUDAOMP__
 #if __cplusplus >= 201103L && CUDA_VERSION >= 9000
 // clang-format off
 #include <__clang_cuda_texture_intrinsics.h>
@@ -386,6 +425,7 @@ __host__ __device__ void __nv_tex_surf_handler(const char *name, T *ptr,
 #endif // __cplusplus >= 201103L && CUDA_VERSION >= 9000
 #include "texture_fetch_functions.h"
 #include "texture_indirect_functions.h"
+#endif
 
 // Restore state of __CUDA_ARCH__ and __THROW we had on entry.
 #pragma pop_macro("__CUDA_ARCH__")
@@ -470,8 +510,10 @@ __device__ inline __cuda_builtin_gridDim_t::operator uint3() const {
 }
 
 #include <__clang_cuda_cmath.h>
+#ifndef __CUDAOMP__
 #include <__clang_cuda_intrinsics.h>
 #include <__clang_cuda_complex_builtins.h>
+#endif
 
 // curand_mtgp32_kernel helpfully redeclares blockDim and threadIdx in host
 // mode, giving them their "proper" types of dim3 and uint3.  This is
@@ -483,7 +525,9 @@ __device__ inline __cuda_builtin_gridDim_t::operator uint3() const {
 #pragma push_macro("uint3")
 #define dim3 __cuda_builtin_blockDim_t
 #define uint3 __cuda_builtin_threadIdx_t
+#ifndef __CUDAOMP__
 #include "curand_mtgp32_kernel.h"
+#endif
 #pragma pop_macro("dim3")
 #pragma pop_macro("uint3")
 #pragma pop_macro("__USE_FAST_MATH__")
@@ -493,10 +537,12 @@ __device__ inline __cuda_builtin_gridDim_t::operator uint3() const {
 // configuration. The declaration is in crt/device_functions.h but that file
 // includes a lot of other stuff we don't want. Instead, we'll provide our own
 // declaration for it here.
+#ifndef __CUDAOMP__
 #if CUDA_VERSION >= 9020
 extern "C" unsigned __cudaPushCallConfiguration(dim3 gridDim, dim3 blockDim,
                                                 size_t sharedMem = 0,
                                                 void *stream = 0);
+#endif
 #endif
 
 #endif // __CUDA__
