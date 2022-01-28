@@ -711,8 +711,12 @@ void CudaToolChain::addClangTargetOptions(
     return;
   }
 
-  CC1Args.push_back("-mlink-builtin-bitcode");
-  CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
+  // TODO: set through cmdline flag.
+  const bool IsCudaOMP = true;
+  if (!IsCudaOMP) {
+    CC1Args.push_back("-mlink-builtin-bitcode");
+    CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
+  }
 
   clang::CudaVersion CudaInstallationVersion = CudaInstallation.version();
 
@@ -750,7 +754,7 @@ void CudaToolChain::addClangTargetOptions(
         DriverArgs.MakeArgString(Twine("-target-sdk-version=") +
                                  CudaVersionToString(CudaInstallationVersion)));
 
-  if (DeviceOffloadingKind == Action::OFK_OpenMP) {
+  if (DeviceOffloadingKind == Action::OFK_OpenMP || IsCudaOMP) {
     if (CudaInstallationVersion < CudaVersion::CUDA_92) {
       getDriver().Diag(
           diag::err_drv_omp_offload_target_cuda_version_not_support)
