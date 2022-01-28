@@ -711,8 +711,7 @@ void CudaToolChain::addClangTargetOptions(
     return;
   }
 
-  // TODO: set through cmdline flag.
-  const bool IsCudaOMP = true;
+  const bool IsCudaOMP = DriverArgs.hasArg(options::OPT_cudaomp);
   if (!IsCudaOMP) {
     CC1Args.push_back("-mlink-builtin-bitcode");
     CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
