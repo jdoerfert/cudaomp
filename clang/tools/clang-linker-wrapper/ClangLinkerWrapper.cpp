@@ -163,7 +163,10 @@ struct DeviceFile {
 };
 
 namespace llvm {
-/// Helper that allows DeviceFile to be used as a key in a DenseMap.
+/// Helper that allows DeviceFile to be used as a key in a DenseMap. For now we
+/// assume device files with matching architectures and triples but different
+/// offloading kinds should be handlded together, this may not be true in the
+/// future.
 template <> struct DenseMapInfo<DeviceFile> {
   static DeviceFile getEmptyKey() {
     return {DenseMapInfo<StringRef>::getEmptyKey(),
@@ -200,6 +203,20 @@ void printCommands(ArrayRef<StringRef> CmdArgs) {
   llvm::errs() << " \"" << CmdArgs.front() << "\" ";
   for (auto IC = std::next(CmdArgs.begin()), IE = CmdArgs.end(); IC != IE; ++IC)
     llvm::errs() << *IC << (std::next(IC) != IE ? " " : "\n");
+}
+
+static StringRef getDeviceFileExtension(StringRef DeviceTriple,
+                                        file_magic Magic) {
+  Triple TheTriple(DeviceTriple);
+  if (Magic == file_magic::bitcode)
+    return "bc";
+  if (Magic == file_magic::cuda_fatbinary)
+    return "fatbin";
+  if (Magic == file_magic::unknown)
+    return "s";
+  if (TheTriple.isNVPTX() && Magic == file_magic::elf_relocatable)
+    return "cubin";
+  return "o";
 }
 
 std::string getMainExecutable(const char *Name) {
@@ -346,8 +363,19 @@ extractFromBinary(const ObjectFile &Obj,
     if (!Contents)
       return Contents.takeError();
 
+#if 1
     if (Error Err = extractOffloadFiles(*Contents, Prefix, DeviceFiles))
       return std::move(Err);
+#else
+    if (Expected<StringRef> Contents = Sec.getContents()) {
+      SmallString<128> TempFile;
+      StringRef DeviceExtension =
+          getDeviceFileExtension(DeviceTriple, identify_magic(*Contents));
+      if (Error Err = createOutputFile(Prefix + "-" + Kind + "-" +
+                                           DeviceTriple + "-" + Arch,
+                                       DeviceExtension, TempFile))
+        return std::move(Err);
+#endif
 
     ToBeStripped.push_back(*Name);
   }
@@ -438,7 +466,16 @@ extractFromBitcode(std::unique_ptr<MemoryBuffer> Buffer,
 
     StringRef Contents = CDS->getAsString();
 
+#if 1
     if (Error Err = extractOffloadFiles(Contents, Prefix, DeviceFiles))
+#else
+    SmallString<128> TempFile;
+    StringRef DeviceExtension =
+        getDeviceFileExtension(DeviceTriple, identify_magic(Contents));
+    if (Error Err = createOutputFile(Prefix + "-" + Kind + "-" + DeviceTriple +
+                                         "-" + Arch,
+                                     DeviceExtension, TempFile))
+#endif
       return std::move(Err);
 
     ToBeDeleted.push_back(&GV);
@@ -936,7 +973,22 @@ Error linkBitcodeFiles(SmallVectorImpl<std::string> &InputFiles,
       return createFileError(File, EC);
 
     file_magic Type = identify_magic((*BufferOrErr)->getBuffer());
-    if (Type != file_magic::bitcode) {
+    switch (Type) {
+    case file_magic::bitcode: {
+      Expected<std::unique_ptr<lto::InputFile>> InputFileOrErr =
+          llvm::lto::InputFile::create(**BufferOrErr);
+      if (!InputFileOrErr)
+        return InputFileOrErr.takeError();
+
+      // Save the input file and the buffer associated with its memory.
+      BitcodeFiles.push_back(std::move(*InputFileOrErr));
+      SavedBuffers.push_back(std::move(*BufferOrErr));
+      continue;
+    }
+    case file_magic::elf_relocatable:
+    case file_magic::elf_shared_object:
+    case file_magic::macho_object:
+    case file_magic::coff_object: {
       Expected<std::unique_ptr<ObjectFile>> ObjFile =
           ObjectFile::createObjectFile(**BufferOrErr, Type);
       if (!ObjFile)
@@ -954,15 +1006,10 @@ Error linkBitcodeFiles(SmallVectorImpl<std::string> &InputFiles,
         else
           UsedInSharedLib.insert(Saver.save(*Name));
       }
-    } else {
-      Expected<std::unique_ptr<lto::InputFile>> InputFileOrErr =
-          llvm::lto::InputFile::create(**BufferOrErr);
-      if (!InputFileOrErr)
-        return InputFileOrErr.takeError();
-
-      // Save the input file and the buffer associated with its memory.
-      BitcodeFiles.push_back(std::move(*InputFileOrErr));
-      SavedBuffers.push_back(std::move(*BufferOrErr));
+      continue;
+    }
+    default:
+      continue;
     }
   }
 
