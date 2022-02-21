@@ -4146,8 +4146,21 @@ static StringRef getCanonicalArchString(Compilation &C,
   return StringRef();
 }
 
+/// Checks if the set offloading architectures does not conflict. Returns the
+/// incompatible pair if a conflict occurs.
+static llvm::Optional<std::pair<llvm::StringRef, llvm::StringRef>>
+getConflictOffloadArchCombination(const llvm::DenseSet<StringRef> &Archs,
+                                  Action::OffloadKind Kind) {
+  if (Kind != Action::OFK_HIP)
+    return None;
+
+  std::set<StringRef> ArchSet;
+  llvm::copy(Archs, std::inserter(ArchSet, ArchSet.begin()));
+  return getConflictTargetIDCombination(ArchSet);
+}
+
 /// Returns the set of bound architectures active for this compilation kind.
-/// This function returns a set of bound architectures, if there are bound
+/// This function returns a set of bound architectures, if there are no bound
 /// architctures we return a set containing only the empty string.
 static llvm::DenseSet<StringRef>
 getOffloadArchs(Compilation &C, llvm::opt::DerivedArgList &Args,
@@ -4161,21 +4174,37 @@ getOffloadArchs(Compilation &C, llvm::opt::DerivedArgList &Args,
   if (Args.hasArgNoClaim(options::OPT_offload_EQ) &&
       Args.hasArgNoClaim(options::OPT_offload_arch_EQ,
                          options::OPT_no_offload_arch_EQ)) {
-    C.getDriver().Diag(diag::err_opt_not_valid_with_opt) << "--offload-arch"
-                                                         << "--offload";
+    C.getDriver().Diag(diag::err_opt_not_valid_with_opt)
+        << "--offload"
+        << (Args.hasArgNoClaim(options::OPT_offload_arch_EQ)
+                ? "--offload-arch"
+                : "--no-offload-arch");
   }
 
   llvm::DenseSet<StringRef> Archs;
-  for (auto &Arg : Args.getAllArgValues(options::OPT_offload_arch_EQ))
-    Archs.insert(getCanonicalArchString(C, Args, Arg, Kind));
-  for (auto &Arg : Args.getAllArgValues(options::OPT_no_offload_arch_EQ))
-    Archs.erase(getCanonicalArchString(C, Args, Arg, Kind));
+  for (auto &Arg : Args) {
+    if (Arg->getOption().matches(options::OPT_offload_arch_EQ)) {
+      Archs.insert(getCanonicalArchString(C, Args, Arg->getValue(), Kind));
+    } else if (Arg->getOption().matches(options::OPT_no_offload_arch_EQ)) {
+      if (Arg->getValue() == StringRef("all"))
+        Archs.clear();
+      else
+        Archs.erase(getCanonicalArchString(C, Args, Arg->getValue(), Kind));
+    }
+  }
+
+  if (auto ConflictingArchs = getConflictOffloadArchCombination(Archs, Kind)) {
+    C.getDriver().Diag(clang::diag::err_drv_bad_offload_arch_combo)
+        << ConflictingArchs.getValue().first
+        << ConflictingArchs.getValue().second;
+    C.setContainsError();
+  }
 
   if (Archs.empty()) {
     if (Kind == Action::OFK_Cuda)
-      Archs.insert(CudaArchToString(CudaArch::SM_35));
-    else if (Kind == Action::OFK_Cuda)
-      Archs.insert(CudaArchToString(CudaArch::GFX803));
+      Archs.insert(CudaArchToString(DefaultCudaArch));
+    else if (Kind == Action::OFK_HIP)
+      Archs.insert(CudaArchToString(DefaultHIPArch));
   }
 
   return Archs;
@@ -4211,9 +4240,6 @@ Action *Driver::BuildOffloadingActions(Compilation &C,
 
     if (ToolChains.empty())
       continue;
-
-    if (!Relocatable)
-      Diags.Report(diag::err_drv_non_relocatable);
 
     // Get the product of all bound architectures and toolchains.
     SmallVector<std::pair<const ToolChain *, StringRef>> TCAndArchs;

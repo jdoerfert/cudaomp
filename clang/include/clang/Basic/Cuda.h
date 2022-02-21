@@ -102,6 +102,9 @@ enum class CudaArch {
   LAST,
 };
 
+constexpr CudaArch DefaultCudaArch = CudaArch::SM_35;
+constexpr CudaArch DefaultHIPArch = CudaArch::GFX803;
+
 static inline bool IsNVIDIAGpuArch(CudaArch A) {
   return A >= CudaArch::SM_20 && A < CudaArch::GFX600;
 }

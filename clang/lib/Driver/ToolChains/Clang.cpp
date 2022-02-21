@@ -6960,12 +6960,11 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
           C.getArgs().MakeArgString(TC->getInputFilename(InputFile));
       StringRef InputName = Clang::getBaseInputStem(Args, Inputs);
       // The CUDA toolchain should have a bound arch appended to the filename.
-      StringRef Arch = File.split(".").first.rsplit('-').second;
+      StringRef Arch = File.rsplit(".").first.rsplit('-').second;
       CmdArgs.push_back(Args.MakeArgString(
           "-fembed-offload-object=" + File + "," +
           Action::GetOffloadKindName(Action::OFK_Cuda) + "." +
-          TC->getTripleString() + "." +
-          Arch + "." + InputName));
+          TC->getTripleString() + "." + Arch + "." + InputName));
     }
   }
 
