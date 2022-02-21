@@ -4373,6 +4373,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // expected to have exactly one input.
   bool IsCuda = JA.isOffloading(Action::OFK_Cuda);
   bool IsCudaDevice = JA.isDeviceOffloading(Action::OFK_Cuda);
+  bool IsCudaHost = JA.isHostOffloading(Action::OFK_Cuda);
   bool IsHIP = JA.isOffloading(Action::OFK_HIP);
   bool IsHIPDevice = JA.isDeviceOffloading(Action::OFK_HIP);
   bool IsOpenMPDevice = JA.isDeviceOffloading(Action::OFK_OpenMP);
@@ -4408,6 +4409,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   InputInfoList ModuleHeaderInputs;
   InputInfoList ExtractAPIInputs;
   InputInfoList OpenMPHostInputs;
+  InputInfoList CudaHostInputs;
   const InputInfo *CudaDeviceInput = nullptr;
   const InputInfo *OpenMPDeviceInput = nullptr;
   for (const InputInfo &I : Inputs) {
@@ -4430,6 +4432,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
             << types::getTypeName(ExpectedInputType);
       }
       ExtractAPIInputs.push_back(I);
+    } else if (IsCudaHost && Args.hasArg(options::OPT_fopenmp_new_driver)) {
+      CudaHostInputs.push_back(I);
     } else if ((IsCuda || IsHIP) && !CudaDeviceInput) {
       CudaDeviceInput = &I;
     } else if (IsOpenMPDevice && !OpenMPDeviceInput) {
@@ -6936,6 +6940,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     auto OpenMPTCs = C.getOffloadToolChains<Action::OFK_OpenMP>();
     for (auto TI = OpenMPTCs.first, TE = OpenMPTCs.second; TI != TE;
          ++TI, ++InputFile) {
+      assert(InputFile->isFilename() && "Offloading requires a filename");
       const ToolChain *TC = TI->second;
       const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
       StringRef File =
@@ -6946,6 +6951,21 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                              Action::GetOffloadKindName(Action::OFK_OpenMP) +
                              "," + TC->getTripleString() + "," +
                              TCArgs.getLastArgValue(options::OPT_march_EQ)));
+    }
+  } else if (IsCudaHost && !CudaHostInputs.empty()) {
+    const ToolChain *TC = C.getSingleOffloadToolChain<Action::OFK_Cuda>();
+    for (const auto &InputFile : CudaHostInputs) {
+      assert(InputFile.isFilename() && "Offloading requires a filename");
+      StringRef File =
+          C.getArgs().MakeArgString(TC->getInputFilename(InputFile));
+      StringRef InputName = Clang::getBaseInputStem(Args, Inputs);
+      // The CUDA toolchain should have a bound arch appended to the filename.
+      StringRef Arch = File.split(".").first.rsplit('-').second;
+      CmdArgs.push_back(Args.MakeArgString(
+          "-fembed-offload-object=" + File + "," +
+          Action::GetOffloadKindName(Action::OFK_Cuda) + "." +
+          TC->getTripleString() + "." +
+          Arch + "." + InputName));
     }
   }
 
@@ -8193,17 +8213,21 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
   const Driver &D = getToolChain().getDriver();
   const llvm::Triple TheTriple = getToolChain().getTriple();
   auto OpenMPTCRange = C.getOffloadToolChains<Action::OFK_OpenMP>();
+  auto CudaTCRange = C.getOffloadToolChains<Action::OFK_Cuda>();
   ArgStringList CmdArgs;
 
   // Pass the CUDA path to the linker wrapper tool.
-  for (auto &I : llvm::make_range(OpenMPTCRange.first, OpenMPTCRange.second)) {
-    const ToolChain *TC = I.second;
-    if (TC->getTriple().isNVPTX()) {
-      CudaInstallationDetector CudaInstallation(D, TheTriple, Args);
-      if (CudaInstallation.isValid())
-        CmdArgs.push_back(Args.MakeArgString(
-            "--cuda-path=" + CudaInstallation.getInstallPath()));
-      break;
+  for (Action::OffloadKind Kind : {Action::OFK_Cuda, Action::OFK_OpenMP}) {
+    auto TCRange = C.getOffloadToolChains(Kind);
+    for (auto &I : llvm::make_range(TCRange.first, TCRange.second)) {
+      const ToolChain *TC = I.second;
+      if (TC->getTriple().isNVPTX()) {
+        CudaInstallationDetector CudaInstallation(D, TheTriple, Args);
+        if (CudaInstallation.isValid())
+          CmdArgs.push_back(Args.MakeArgString(
+              "--cuda-path=" + CudaInstallation.getInstallPath()));
+        break;
+      }
     }
   }
 

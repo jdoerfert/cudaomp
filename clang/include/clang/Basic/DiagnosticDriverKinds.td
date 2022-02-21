@@ -331,6 +331,8 @@ def err_drv_negative_columns : Error<
   "invalid value '%1' in '%0', value must be 'none' or a positive integer">;
 def err_drv_small_columns : Error<
   "invalid value '%1' in '%0', value must be '%2' or greater">;
+def err_drv_non_relocatable : Error<
+  "the new driver requires relocatable code, compile with '-fgpu-rdc' enabled">;
 
 def err_drv_invalid_malign_branch_EQ : Error<
   "invalid argument '%0' to -malign-branch=; each element must be one of: %1">;
