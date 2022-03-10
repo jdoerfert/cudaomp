@@ -37,6 +37,17 @@
 // which should live in stdlib.h.
 #include <stdlib.h>
 
+// Use the OpenMP math wrappers and library to call device math routines.
+#if defined(__MATH_WRAPPERS__)
+// Math routines on the device will call an OpenMP wrapper to be defined later.
+#pragma omp begin declare variant match(                                       \
+    device = {arch(nvptx, nvptx64, amdgcn)},                                   \
+    implementation = {extension(match_any)})
+
+#include <__clang_openmp_math.h>
+
+#pragma omp end declare variant
+#else
 #pragma omp begin declare variant match(                                       \
     device = {arch(nvptx, nvptx64)}, implementation = {extension(match_any)})
 
@@ -56,6 +67,7 @@
 #undef __OPENMP_AMDGCN__
 
 #pragma omp end declare variant
+#endif
 #endif
 
 #endif

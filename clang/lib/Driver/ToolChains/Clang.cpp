@@ -1299,6 +1299,11 @@ void Clang::AddPreprocessingOptions(Compilation &C, const JobAction &JA,
       llvm::sys::path::append(P, "openmp_wrappers");
       CmdArgs.push_back("-internal-isystem");
       CmdArgs.push_back(Args.MakeArgString(P));
+
+      // If using the device math library we use math wrapper functions.
+      if (JA.isDeviceOffloading(Action::OFK_OpenMP) &&
+          Args.hasArg(options::OPT_fopenmp_device_libm))
+        CmdArgs.push_back("-D__MATH_WRAPPERS__");
     }
 
     CmdArgs.push_back("-include");
