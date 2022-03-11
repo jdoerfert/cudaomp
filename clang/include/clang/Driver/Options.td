@@ -1046,6 +1046,14 @@ def libomptarget_amdgcn_bc_path_EQ : Joined<["--"], "libomptarget-amdgcn-bc-path
   HelpText<"Path to libomptarget-amdgcn bitcode library">, Alias<libomptarget_amdgpu_bc_path_EQ>;
 def libomptarget_nvptx_bc_path_EQ : Joined<["--"], "libomptarget-nvptx-bc-path=">, Group<i_Group>,
   HelpText<"Path to libomptarget-nvptx bitcode library">;
+def libomptarget_amdgpu_wrapper_bc_path_EQ : Joined<["--"], "libomptarget-amdgpu-wrapper-bc-path=">,
+  Group<i_Group>, HelpText<"Path to libomptarget-amdgpu math wrapper bitcode library">;
+def libomptarget_nvptx_wrapper_bc_path_EQ : Joined<["--"], "libomptarget-nvptx-wrapper-bc-path=">,
+  Group<i_Group>, HelpText<"Path to libomptarget-nvptx math wrapper bitcode library">;
+def libomptarget_amdgpu_math_bc_path_EQ : Joined<["--"], "libomptarget-amdgpu-math-bc-path=">,
+  Group<i_Group>, HelpText<"Path to libomptarget-amdgpu math bitcode library">;
+def libomptarget_nvptx_math_bc_path_EQ : Joined<["--"], "libomptarget-nvptx-math-bc-path=">,
+  Group<i_Group>, HelpText<"Path to libomptarget-nvptx math bitcode library">;
 def dD : Flag<["-"], "dD">, Group<d_Group>, Flags<[CC1Option]>,
   HelpText<"Print macro definitions in -E mode in addition to normal output">;
 def dI : Flag<["-"], "dI">, Group<d_Group>, Flags<[CC1Option]>,

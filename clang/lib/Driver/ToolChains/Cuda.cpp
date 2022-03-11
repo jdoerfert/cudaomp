@@ -714,9 +714,6 @@ void CudaToolChain::addClangTargetOptions(
     return;
   }
 
-  CC1Args.push_back("-mlink-builtin-bitcode");
-  CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
-
   clang::CudaVersion CudaInstallationVersion = CudaInstallation.version();
 
   // New CUDA versions often introduce new instructions that are only supported
@@ -762,12 +759,19 @@ void CudaToolChain::addClangTargetOptions(
       return;
     }
 
+    if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
+      addOpenMPMathRTL(getDriver(), DriverArgs, CC1Args, getTriple());
+
     // Link the bitcode library late if we're using device LTO.
     if (getDriver().isUsingLTO(/* IsOffload */ true))
       return;
 
     addOpenMPDeviceRTL(getDriver(), DriverArgs, CC1Args, GpuArch.str(),
                        getTriple());
+
+    CC1Args.push_back("-mlink-builtin-bitcode");
+    CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
+
     AddStaticDeviceLibsPostLinking(getDriver(), DriverArgs, CC1Args, "nvptx",
                                    GpuArch, /*isBitCodeSDL=*/true,
                                    /*postClangLink=*/true);
