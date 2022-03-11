@@ -285,6 +285,9 @@ void AMDGPUOpenMPToolChain::addClangTargetOptions(
   if (DriverArgs.hasArg(options::OPT_nogpulib))
     return;
 
+  if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
+    addOpenMPMathRTL(getDriver(), DriverArgs, CC1Args, getTriple());
+
   // Link the bitcode library late if we're using device LTO.
   if (getDriver().isUsingLTO(/* IsOffload */ true))
     return;

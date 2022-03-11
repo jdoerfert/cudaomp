@@ -2020,6 +2020,94 @@ void tools::addMachineOutlinerArgs(const Driver &D,
   }
 }
 
+static void
+addBitcodeLibrary(const Driver &D, const llvm::opt::ArgList &DriverArgs,
+                  llvm::opt::ArgStringList &CC1Args, const llvm::Triple &Triple,
+                  ArrayRef<StringRef> LibraryPaths,
+                  StringRef BitcodeLibraryName, OptSpecifier BCPathOpt) {
+  // First check whether user specified the bc library.
+  if (const Arg *A = DriverArgs.getLastArg(BCPathOpt)) {
+    SmallString<128> LibOmpTargetFile(A->getValue());
+    if (llvm::sys::fs::exists(LibOmpTargetFile) &&
+        llvm::sys::fs::is_directory(LibOmpTargetFile)) {
+      llvm::sys::path::append(LibOmpTargetFile, BitcodeLibraryName);
+    }
+
+    if (llvm::sys::fs::exists(LibOmpTargetFile)) {
+      CC1Args.push_back("-mlink-builtin-bitcode");
+      CC1Args.push_back(DriverArgs.MakeArgString(LibOmpTargetFile));
+    } else {
+      D.Diag(diag::err_drv_omp_offload_target_bcruntime_not_found)
+          << LibOmpTargetFile;
+    }
+    return;
+  }
+
+  bool FoundBCLibrary = false;
+
+  for (StringRef LibraryPath : LibraryPaths) {
+    SmallString<128> LibOmpTargetFile(LibraryPath);
+    llvm::sys::path::append(LibOmpTargetFile, BitcodeLibraryName);
+    if (llvm::sys::fs::exists(LibOmpTargetFile)) {
+      CC1Args.push_back("-mlink-builtin-bitcode");
+      CC1Args.push_back(DriverArgs.MakeArgString(LibOmpTargetFile));
+      FoundBCLibrary = true;
+      break;
+    }
+  }
+
+  if (!FoundBCLibrary)
+    D.Diag(diag::err_drv_omp_offload_target_missingbcruntime)
+        << BitcodeLibraryName << (Triple.isAMDGCN() ? "amdgpu" : "nvptx");
+}
+
+void tools::addOpenMPMathRTL(const Driver &D,
+                             const llvm::opt::ArgList &DriverArgs,
+                             llvm::opt::ArgStringList &CC1Args,
+                             const llvm::Triple &Triple, bool IncludeLibm) {
+  SmallVector<StringRef, 8> LibraryPaths;
+
+  // Add path to clang lib / lib64 folder.
+  SmallString<256> DefaultLibPath = llvm::sys::path::parent_path(D.Dir);
+  llvm::sys::path::append(DefaultLibPath, Twine("lib") + CLANG_LIBDIR_SUFFIX);
+  LibraryPaths.emplace_back(DefaultLibPath.c_str());
+
+  // Add user defined library paths from LIBRARY_PATH.
+  llvm::Optional<std::string> LibPath =
+      llvm::sys::Process::GetEnv("LIBRARY_PATH");
+  if (LibPath) {
+    SmallVector<StringRef, 8> Frags;
+    const char EnvPathSeparatorStr[] = {llvm::sys::EnvPathSeparator, '\0'};
+    llvm::SplitString(*LibPath, Frags, EnvPathSeparatorStr);
+    for (StringRef Path : Frags)
+      LibraryPaths.emplace_back(Path.trim());
+  }
+
+  StringRef ArchPrefix = Triple.isAMDGCN() ? "amdgpu" : "nvptx";
+
+  OptSpecifier MathWrapperBCPathOpt =
+      Triple.isAMDGCN() ? options::OPT_libomptarget_amdgpu_wrapper_bc_path_EQ
+                        : options::OPT_libomptarget_nvptx_wrapper_bc_path_EQ;
+  std::string MathWrapperName =
+      ("libomptarget-" + ArchPrefix + "-math-wrappers.bc").str();
+
+  addBitcodeLibrary(D, DriverArgs, CC1Args, Triple, LibraryPaths,
+                    MathWrapperName, MathWrapperBCPathOpt);
+
+  // If we are doing LTO only link the OpenMP math wrappers.
+  if (D.isUsingLTO(/* IsOffload */ true) && !IncludeLibm)
+    return;
+
+  OptSpecifier MathBCPathOpt =
+      Triple.isAMDGCN() ? options::OPT_libomptarget_amdgpu_math_bc_path_EQ
+                        : options::OPT_libomptarget_nvptx_math_bc_path_EQ;
+  std::string DeviceMathName =
+      ("libomptarget-" + ArchPrefix + "-libm.bc").str();
+
+  addBitcodeLibrary(D, DriverArgs, CC1Args, Triple, LibraryPaths,
+                    DeviceMathName, MathBCPathOpt);
+}
+
 void tools::addOpenMPDeviceRTL(const Driver &D,
                                const llvm::opt::ArgList &DriverArgs,
                                llvm::opt::ArgStringList &CC1Args,
@@ -2051,37 +2139,6 @@ void tools::addOpenMPDeviceRTL(const Driver &D,
   std::string LibOmpTargetName =
       ("libomptarget-" + ArchPrefix + "-" + BitcodeSuffix + ".bc").str();
 
-  // First check whether user specifies bc library
-  if (const Arg *A = DriverArgs.getLastArg(LibomptargetBCPathOpt)) {
-    SmallString<128> LibOmpTargetFile(A->getValue());
-    if (llvm::sys::fs::exists(LibOmpTargetFile) &&
-        llvm::sys::fs::is_directory(LibOmpTargetFile)) {
-      llvm::sys::path::append(LibOmpTargetFile, LibOmpTargetName);
-    }
-
-    if (llvm::sys::fs::exists(LibOmpTargetFile)) {
-      CC1Args.push_back("-mlink-builtin-bitcode");
-      CC1Args.push_back(DriverArgs.MakeArgString(LibOmpTargetFile));
-    } else {
-      D.Diag(diag::err_drv_omp_offload_target_bcruntime_not_found)
-          << LibOmpTargetFile;
-    }
-  } else {
-    bool FoundBCLibrary = false;
-
-    for (StringRef LibraryPath : LibraryPaths) {
-      SmallString<128> LibOmpTargetFile(LibraryPath);
-      llvm::sys::path::append(LibOmpTargetFile, LibOmpTargetName);
-      if (llvm::sys::fs::exists(LibOmpTargetFile)) {
-        CC1Args.push_back("-mlink-builtin-bitcode");
-        CC1Args.push_back(DriverArgs.MakeArgString(LibOmpTargetFile));
-        FoundBCLibrary = true;
-        break;
-      }
-    }
-
-    if (!FoundBCLibrary)
-      D.Diag(diag::err_drv_omp_offload_target_missingbcruntime)
-          << LibOmpTargetName << ArchPrefix;
-  }
+  addBitcodeLibrary(D, DriverArgs, CC1Args, Triple, LibraryPaths,
+                    LibOmpTargetName, LibomptargetBCPathOpt);
 }
