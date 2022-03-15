@@ -2519,9 +2519,9 @@ defm openmp_optimistic_collapse : BoolFOption<"openmp-optimistic-collapse",
   PosFlag<SetTrue, [CC1Option]>, NegFlag<SetFalse>, BothFlags<[NoArgumentUnused, HelpHidden]>>;
 def static_openmp: Flag<["-"], "static-openmp">,
   HelpText<"Use the static host OpenMP runtime while linking.">;
-def fopenmp_new_driver : Flag<["-"], "fopenmp-new-driver">, Flags<[CC1Option]>, Group<Action_Group>,
-  HelpText<"Use the new driver for OpenMP offloading.">;
-def foffload_new_driver : Flag<["-"], "foffload-new-driver">, Flags<[CC1Option]>, Group<Action_Group>,
+def fopenmp_new_driver : Flag<["-"], "fopenmp-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
+  MarshallingInfoFlag<LangOpts<"OffloadingNewDriver">>, HelpText<"Use the new driver for OpenMP offloading.">;
+def foffload_new_driver : Flag<["-"], "foffload-new-driver">, Flags<[CC1Option]>, Group<f_Group>,
   HelpText<"Use the new driver for offloading.">, Alias<fopenmp_new_driver>;
 def fno_optimize_sibling_calls : Flag<["-"], "fno-optimize-sibling-calls">, Group<f_Group>, Flags<[CC1Option]>,
   HelpText<"Disable tail call optimization, keeping the call stack accurate">,
