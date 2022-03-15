@@ -491,6 +491,49 @@ static void replaceManagedVar(llvm::GlobalVariable *Var,
   }
 }
 
+static llvm::IntegerType *getSizeTTy(llvm::Module &M) {
+  llvm::LLVMContext &C = M.getContext();
+  switch (M.getDataLayout().getPointerTypeSize(llvm::Type::getInt8PtrTy(C))) {
+  case 4u:
+    return llvm::Type::getInt32Ty(C);
+  case 8u:
+    return llvm::Type::getInt64Ty(C);
+  }
+  llvm_unreachable("unsupported pointer type size");
+}
+
+static void createOffloadEntry(llvm::Module &M, llvm::Constant *ID,
+    StringRef Name, uint64_t Size, int32_t Flags) {
+  llvm::LLVMContext &C = M.getContext();
+  llvm::StructType *EntryTy = llvm::StructType::getTypeByName(C, "__tgt_offload_entry");
+  if (!EntryTy)
+    EntryTy = llvm::StructType::create("__tgt_offload_entry", llvm::Type::getInt8PtrTy(C),
+                                 llvm::Type::getInt8PtrTy(C), getSizeTTy(M),
+                                 llvm::Type::getInt32Ty(C), llvm::Type::getInt32Ty(C));
+
+  // Create constant string with the name.
+  llvm::Constant *StrPtrInit = llvm::ConstantDataArray::getString(C, Name);
+
+  auto *Str = new llvm::GlobalVariable(M, StrPtrInit->getType(), true,
+      llvm::GlobalVariable::InternalLinkage, StrPtrInit,
+      ".offloading.entry.name");
+  llvm::Constant *EntryData[] = {
+      llvm::ConstantExpr::getPointerBitCastOrAddrSpaceCast(
+          ID, llvm::Type::getInt8PtrTy(C)),
+      llvm::ConstantExpr::getPointerBitCastOrAddrSpaceCast(
+          Str, llvm::Type::getInt8PtrTy(C)),
+      llvm::ConstantInt::get(llvm::Type::getInt64Ty(C), Size),
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), Flags),
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), (Size == 0) ? 4 : 0)};
+  llvm::Constant *Initializer = llvm::ConstantStruct::get(EntryTy, EntryData);
+  auto *GV = new llvm::GlobalVariable(M, EntryTy, false,
+      llvm::GlobalValue::WeakAnyLinkage, Initializer, ".offloading.entry." +
+      Name, nullptr,
+      llvm::GlobalValue::NotThreadLocal,
+      M.getDataLayout().getDefaultGlobalsAddressSpace());
+  GV->setSection("omp_offloading_entries");
+}
+
 /// Creates a function that sets up state on the host side for CUDA objects that
 /// have a presence on both the host and device sides. Specifically, registers
 /// the host side of kernel functions and device global variables with the CUDA
@@ -547,6 +590,8 @@ llvm::Function *CGNVCUDARuntime::makeRegisterGlobalsFn() {
         NullPtr,
         llvm::ConstantPointerNull::get(IntTy->getPointerTo())};
     Builder.CreateCall(RegisterFunc, Args);
+    createOffloadEntry(TheModule, KernelHandles[I.Kernel],
+        getDeviceSideName(cast<NamedDecl>(I.D)), 0, 0);
   }
 
   llvm::Type *VarSizeTy = IntTy;
@@ -630,6 +675,7 @@ llvm::Function *CGNVCUDARuntime::makeRegisterGlobalsFn() {
             llvm::ConstantInt::get(IntTy, Info.Flags.isConstant()),
             llvm::ConstantInt::get(IntTy, 0)};
         Builder.CreateCall(RegisterVar, Args);
+        createOffloadEntry(TheModule, Var, getDeviceSideName(Info.D), VarSize, 0);
       }
       break;
     }
@@ -679,6 +725,24 @@ llvm::Function *CGNVCUDARuntime::makeModuleCtorFunction() {
   bool IsCUDA = CGM.getLangOpts().CUDA;
   // No need to generate ctors/dtors if there is no GPU binary.
   StringRef CudaGpuBinaryFileName = CGM.getCodeGenOpts().CudaGpuBinaryFileName;
+
+  if (CGM.getLangOpts().OffloadingNewDriver) {
+    for (auto &&I : EmittedKernels) {
+      createOffloadEntry(TheModule, KernelHandles[I.Kernel],
+          getDeviceSideName(cast<NamedDecl>(I.D)), 0, 0);
+    }
+
+    for (auto &&Info : DeviceVars) {
+      if (Info.Flags.getKind() != DeviceVarFlags::Variable)
+        continue;
+
+      llvm::GlobalVariable *Var = Info.Var;
+      uint64_t VarSize =
+        CGM.getDataLayout().getTypeAllocSize(Var->getValueType());
+      createOffloadEntry(TheModule, Var, getDeviceSideName(Info.D), VarSize, 0);
+    }
+  }
+
   if (CudaGpuBinaryFileName.empty() && !IsHIP)
     return nullptr;
   if ((IsHIP || (IsCUDA && !RelocatableDeviceCode)) && EmittedKernels.empty() &&
