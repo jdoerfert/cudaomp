@@ -173,7 +173,9 @@ inline __host__ double __signbitd(double x) {
 // CUDA headers. Clang now provides its own implementation of the wrappers.
 #if CUDA_VERSION >= 9000
 #include <__clang_cuda_device_functions.h>
+#if !defined(__MATH_WRAPPERS__)
 #include <__clang_cuda_math.h>
+#endif
 #endif
 
 // __THROW is redefined to be empty by device_functions_decls.h in CUDA. Clang's
@@ -509,7 +511,9 @@ __device__ inline __cuda_builtin_gridDim_t::operator uint3() const {
   return {x, y, z};
 }
 
+#if !defined(__MATH_WRAPPERS__)
 #include <__clang_cuda_cmath.h>
+#endif
 #ifndef __CUDAOMP__
 #include <__clang_cuda_intrinsics.h>
 #include <__clang_cuda_complex_builtins.h>
