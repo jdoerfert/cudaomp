@@ -8260,10 +8260,12 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
                 "--cuda-path=" + CudaInstallation.getInstallPath()));
 
         if (D.isUsingLTO(/* IsOffload */ true)) {
-          const ArgList &TCArgs =
-            C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
-          StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
+          StringRef Arch = "sm_70";
           std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(Arch);
+          if (!LibDeviceFile.empty())
+            CmdArgs.push_back(
+                Args.MakeArgString("-target-library=cuda-" + TC->getTripleString() +
+                                   "-" + Arch + "=" + LibDeviceFile));
         }
       }
     }
@@ -8288,7 +8290,7 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
 
     for (StringRef LibName : BCLibs)
       CmdArgs.push_back(
-          Args.MakeArgString("-target-library=" + TC->getTripleString() + "-" +
+          Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() + "-" +
                              Arch + "=" + LibName));
   }
 
@@ -8324,7 +8326,7 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
 
       if (!BitcodeLibrary.empty())
         CmdArgs.push_back(
-            Args.MakeArgString("-target-library=" + TC->getTripleString() +
+            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
                                "-" + Arch + "=" + BitcodeLibrary.back()));
 
       ArgStringList MathLibrary;
@@ -8332,14 +8334,14 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
 
       if (!MathLibrary.empty())
         CmdArgs.push_back(
-            Args.MakeArgString("-target-library=" + TC->getTripleString() +
+            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
                                "-" + Arch + "=" + MathLibrary.back()));
 
       CudaInstallationDetector CudaInstallation(D, TheTriple, Args);
       std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(Arch);
       if (!LibDeviceFile.empty())
         CmdArgs.push_back(
-            Args.MakeArgString("-target-library=" + TC->getTripleString() +
+            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
                                "-" + Arch + "=" + LibDeviceFile));
     }
 
