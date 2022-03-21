@@ -300,6 +300,8 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     CC1Args.push_back("-internal-isystem");
     CC1Args.push_back(DriverArgs.MakeArgString(P));
 
+    if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
+      CC1Args.push_back("-D__MATH_WRAPPERS__");
     CC1Args.push_back("-D__CUDAOMP__");
     CC1Args.push_back("-include");
     CC1Args.push_back("__openmp_cuda_host_wrapper.h");
@@ -795,6 +797,9 @@ void CudaToolChain::addClangTargetOptions(
     // Link the bitcode library late if we're using device LTO.
     if (getDriver().isUsingLTO(/* IsOffload */ true))
       return;
+
+    if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
+      addOpenMPMathRTL(getDriver(), DriverArgs, CC1Args, getTriple(), true);
 
     CC1Args.push_back("-mlink-builtin-bitcode");
     CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));

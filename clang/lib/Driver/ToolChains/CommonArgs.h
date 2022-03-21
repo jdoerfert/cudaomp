@@ -194,7 +194,8 @@ void addMachineOutlinerArgs(const Driver &D, const llvm::opt::ArgList &Args,
 
 void addOpenMPMathRTL(const Driver &D, const llvm::opt::ArgList &DriverArgs,
                       llvm::opt::ArgStringList &CC1Args,
-                      const llvm::Triple &Triple, bool IncludeLibm = false);
+                      const llvm::Triple &Triple, bool IncludeLibm = false,
+                      bool OnlyDeviceLibm = false);
 
 void addOpenMPDeviceRTL(const Driver &D, const llvm::opt::ArgList &DriverArgs,
                         llvm::opt::ArgStringList &CC1Args,

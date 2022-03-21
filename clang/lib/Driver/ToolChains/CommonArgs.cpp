@@ -2064,7 +2064,8 @@ addBitcodeLibrary(const Driver &D, const llvm::opt::ArgList &DriverArgs,
 void tools::addOpenMPMathRTL(const Driver &D,
                              const llvm::opt::ArgList &DriverArgs,
                              llvm::opt::ArgStringList &CC1Args,
-                             const llvm::Triple &Triple, bool IncludeLibm) {
+                             const llvm::Triple &Triple, bool IncludeLibm,
+                             bool OnlyDeviceLibm) {
   SmallVector<StringRef, 8> LibraryPaths;
 
   // Add path to clang lib / lib64 folder.
@@ -2085,6 +2086,7 @@ void tools::addOpenMPMathRTL(const Driver &D,
 
   StringRef ArchPrefix = Triple.isAMDGCN() ? "amdgpu" : "nvptx";
 
+  if (!OnlyDeviceLibm) {
   OptSpecifier MathWrapperBCPathOpt =
       Triple.isAMDGCN() ? options::OPT_libomptarget_amdgpu_wrapper_bc_path_EQ
                         : options::OPT_libomptarget_nvptx_wrapper_bc_path_EQ;
@@ -2093,6 +2095,7 @@ void tools::addOpenMPMathRTL(const Driver &D,
 
   addBitcodeLibrary(D, DriverArgs, CC1Args, Triple, LibraryPaths,
                     MathWrapperName, MathWrapperBCPathOpt);
+  }
 
   // If we are doing LTO only link the OpenMP math wrappers.
   if (D.isUsingLTO(/* IsOffload */ true) && !IncludeLibm)

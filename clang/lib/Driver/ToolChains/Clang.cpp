@@ -8242,6 +8242,14 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
             CmdArgs.push_back(
                 Args.MakeArgString("-target-library=cuda-" + TC->getTripleString() +
                                    "-" + Arch + "=" + LibDeviceFile));
+          ArgStringList MathLibrary;
+          addOpenMPMathRTL(TC->getDriver(), Args, MathLibrary, TC->getTriple(),
+              true, true);
+
+          if (!MathLibrary.empty())
+            CmdArgs.push_back(
+                Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
+                  "-" + Arch + "=" + MathLibrary.back()));
         }
       }
     }

@@ -20,9 +20,17 @@
 // would preclude the use of our own __device__ overloads for these functions.
 
 #pragma push_macro("__DEVICE__")
+#if defined(__MATH_WRAPPERS__)
+#define __DEVICE__                                                             \
+  __inline__ __attribute__((always_inline)) __attribute__((device))
+#else
 #define __DEVICE__                                                             \
   static __inline__ __attribute__((always_inline)) __attribute__((device))
+#endif
 
+#if defined(__MATH_WRAPPERS__) && defined(__cplusplus)
+extern "C" {
+#endif
 __DEVICE__ long abs(long);
 __DEVICE__ long long abs(long long);
 __DEVICE__ double abs(double);
@@ -179,6 +187,9 @@ __DEVICE__ double tgamma(double);
 __DEVICE__ float tgamma(float);
 __DEVICE__ double trunc(double);
 __DEVICE__ float trunc(float);
+#if defined(__MATH_WRAPPERS__) && defined(__cplusplus)
+}
+#endif
 
 // Notably missing above is nexttoward, which we don't define on
 // the device side because libdevice doesn't give us an implementation, and we
