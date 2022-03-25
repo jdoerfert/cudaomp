@@ -34,7 +34,9 @@
 #include <__clang_cuda_math_forward_declares.h>
 
 #ifdef __CUDAOMP__
+#ifndef __CUDAOMP_AMD__
 #include <__clang_cuda_builtin_vars.h>
+#endif
 #include "cuda_wrappers/cuda_omp_files/internal_types.h"
 #endif
 
@@ -80,7 +82,9 @@
 #define __CUDA_ARCH__ 9999
 #endif
 
+#ifndef __CUDAOMP_AMD__
 #include "__clang_cuda_builtin_vars.h"
+#endif
 
 // No need for device_launch_parameters.h as __clang_cuda_builtin_vars.h above
 // has taken care of builtin variables declared in the file.
@@ -172,9 +176,11 @@ inline __host__ double __signbitd(double x) {
 // functions, became compiler builtins in CUDA-9 and have been removed from the
 // CUDA headers. Clang now provides its own implementation of the wrappers.
 #if CUDA_VERSION >= 9000
+#ifndef __CUDAOMP_AMD__
 #include <__clang_cuda_device_functions.h>
 #if !defined(__MATH_WRAPPERS__)
 #include <__clang_cuda_math.h>
+#endif
 #endif
 #endif
 
@@ -303,6 +309,7 @@ static inline __device__ void __brkpt(int __c) { __brkpt(); }
 #endif
 #include "sm_20_atomic_functions.hpp"
 #endif
+#ifndef __CUDAOMP_AMD__
 // Predicate functions used in `__builtin_assume` need to have no side effect.
 // However, sm_20_intrinsics.hpp doesn't define them with neither pure nor
 // const attribute. Rename definitions from sm_20_intrinsics.hpp and re-define
@@ -339,6 +346,7 @@ __DEVICE__ unsigned int __isLocal(const void *p) {
 #pragma pop_macro("__DEVICE__")
 #ifndef __CUDAOMP__
 #include "sm_32_atomic_functions.hpp"
+#endif
 #endif
 
 // Don't include sm_30_intrinsics.h and sm_32_intrinsics.h.  These define the
@@ -479,6 +487,7 @@ __device__ static inline void *malloc(size_t __size) {
 // Out-of-line implementations from __clang_cuda_builtin_vars.h.  These need to
 // come after we've pulled in the definition of uint3 and dim3.
 
+#ifndef __CUDAOMP_AMD__
 __device__ inline __cuda_builtin_threadIdx_t::operator dim3() const {
   return dim3(x, y, z);
 }
@@ -510,9 +519,11 @@ __device__ inline __cuda_builtin_gridDim_t::operator dim3() const {
 __device__ inline __cuda_builtin_gridDim_t::operator uint3() const {
   return {x, y, z};
 }
-
+#endif
+#ifndef __CUDAOMP_AMD__
 #if !defined(__MATH_WRAPPERS__)
 #include <__clang_cuda_cmath.h>
+#endif
 #endif
 #ifndef __CUDAOMP__
 #include <__clang_cuda_intrinsics.h>

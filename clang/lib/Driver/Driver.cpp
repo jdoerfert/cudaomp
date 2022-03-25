@@ -139,8 +139,10 @@ getNVIDIAOffloadTargetTriple(const Driver &D, const ArgList &Args,
     D.Diag(diag::err_drv_cuda_offload_only_emit_bc);
     return llvm::None;
   }
-  D.Diag(diag::err_drv_invalid_or_unsupported_offload_target) << TT->str();
-  return llvm::None;
+  return TT;
+  // TODO: Currently deactivated to support cudaomp retargeting
+  // D.Diag(diag::err_drv_invalid_or_unsupported_offload_target) << TT->str();
+  // return llvm::None;
 }
 static llvm::Optional<llvm::Triple>
 getHIPOffloadTargetTriple(const Driver &D, const ArgList &Args) {
@@ -2820,13 +2822,14 @@ class OffloadingActionBuilder final {
         }
       }
 
-      // --offload and --offload-arch options are mutually exclusive.
-      if (Args.hasArgNoClaim(options::OPT_offload_EQ) &&
-          Args.hasArgNoClaim(options::OPT_offload_arch_EQ,
-                             options::OPT_no_offload_arch_EQ)) {
-        C.getDriver().Diag(diag::err_opt_not_valid_with_opt) << "--offload-arch"
-                                                             << "--offload";
-      }
+      // TODO: decide whether or not to keep this check in some form (not helpful during cudaomp to AMD work)
+      // // --offload and --offload-arch options are mutually exclusive.
+      // if (Args.hasArgNoClaim(options::OPT_offload_EQ) &&
+      //     Args.hasArgNoClaim(options::OPT_offload_arch_EQ,
+      //                        options::OPT_no_offload_arch_EQ)) {
+      //   C.getDriver().Diag(diag::err_opt_not_valid_with_opt) << "--offload-arch"
+      //                                                        << "--offload";
+      // }
 
       // Collect all cuda_gpu_arch parameters, removing duplicates.
       std::set<StringRef> GpuArchs;
@@ -2893,9 +2896,12 @@ class OffloadingActionBuilder final {
 
     StringRef getCanonicalOffloadArch(StringRef ArchStr) override {
       CudaArch Arch = StringToCudaArch(ArchStr);
-      if (Arch == CudaArch::UNKNOWN || !IsNVIDIAGpuArch(Arch)) {
-        C.getDriver().Diag(clang::diag::err_drv_cuda_bad_gpu_arch) << ArchStr;
-        return StringRef();
+      // Only check if not using cudaomp to retarget to a specific (potentially non-NVIDIA) architecture
+      if (!(Args.hasArg(options::OPT_cudaomp) && Args.hasArg(options::OPT_offload_EQ))) {
+        if (Arch == CudaArch::UNKNOWN || !IsNVIDIAGpuArch(Arch)) {
+          C.getDriver().Diag(clang::diag::err_drv_cuda_bad_gpu_arch) << ArchStr;
+          return StringRef();
+        }
       }
       return CudaArchToString(Arch);
     }
@@ -4123,9 +4129,12 @@ static StringRef getCanonicalArchString(Compilation &C,
                                         Action::OffloadKind Kind) {
   if (Kind == Action::OFK_Cuda) {
     CudaArch Arch = StringToCudaArch(ArchStr);
-    if (Arch == CudaArch::UNKNOWN || !IsNVIDIAGpuArch(Arch)) {
-      C.getDriver().Diag(clang::diag::err_drv_cuda_bad_gpu_arch) << ArchStr;
-      return StringRef();
+    // Only check if not using cudaomp to retarget to a specific (potentially non-NVIDIA) architecture
+    if (!(Args.hasArg(options::OPT_cudaomp) && Args.hasArg(options::OPT_offload_EQ))) {
+      if (Arch == CudaArch::UNKNOWN || !IsNVIDIAGpuArch(Arch)) {
+        C.getDriver().Diag(clang::diag::err_drv_cuda_bad_gpu_arch) << ArchStr;
+        return StringRef();
+      }
     }
     return Args.MakeArgStringRef(CudaArchToString(Arch));
   } else if (Kind == Action::OFK_HIP) {
@@ -4170,16 +4179,17 @@ getOffloadArchs(Compilation &C, llvm::opt::DerivedArgList &Args,
   if (Kind == Action::OFK_OpenMP)
     return llvm::DenseSet<StringRef>{StringRef()};
 
-  // --offload and --offload-arch options are mutually exclusive.
-  if (Args.hasArgNoClaim(options::OPT_offload_EQ) &&
-      Args.hasArgNoClaim(options::OPT_offload_arch_EQ,
-                         options::OPT_no_offload_arch_EQ)) {
-    C.getDriver().Diag(diag::err_opt_not_valid_with_opt)
-        << "--offload"
-        << (Args.hasArgNoClaim(options::OPT_offload_arch_EQ)
-                ? "--offload-arch"
-                : "--no-offload-arch");
-  }
+  // TODO: decide whether or not to keep this check in some form (not helpful during cudaomp to AMD work)
+  // // --offload and --offload-arch options are mutually exclusive.
+  // if (Args.hasArgNoClaim(options::OPT_offload_EQ) &&
+  //     Args.hasArgNoClaim(options::OPT_offload_arch_EQ,
+  //                        options::OPT_no_offload_arch_EQ)) {
+  //   C.getDriver().Diag(diag::err_opt_not_valid_with_opt)
+  //       << "--offload"
+  //       << (Args.hasArgNoClaim(options::OPT_offload_arch_EQ)
+  //               ? "--offload-arch"
+  //               : "--no-offload-arch");
+  // }
 
   llvm::DenseSet<StringRef> Archs;
   for (auto &Arg : Args) {

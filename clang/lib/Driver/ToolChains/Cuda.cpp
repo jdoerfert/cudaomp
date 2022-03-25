@@ -300,6 +300,13 @@ void CudaInstallationDetector::AddCudaIncludeArgs(
     CC1Args.push_back("-internal-isystem");
     CC1Args.push_back(DriverArgs.MakeArgString(P));
 
+    if (DriverArgs.hasArg(options::OPT_offload_EQ)) {
+      StringRef tgt_triple = DriverArgs.getLastArgValue(options::OPT_offload_EQ);
+      if (tgt_triple == StringRef("amdgcn-amd-amdhsa")) {
+        CC1Args.push_back("-D__CUDAOMP_AMD__");
+      }
+    }
+
     if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
       CC1Args.push_back("-D__MATH_WRAPPERS__");
     CC1Args.push_back("-D__CUDAOMP__");
