@@ -417,7 +417,7 @@ void CGNVCUDARuntime::emitDeviceStubBodyNew(CodeGenFunction &CGF,
 }
 
 void CGNVCUDARuntime::emitDeviceStubBodyLegacy(CodeGenFunction &CGF,
-                                               FunctionArgList &Args) {
+                                               FunctionArgList &Args) {                                             
   // Emit a call to cudaSetupArgument for each arg in Args.
   llvm::FunctionCallee cudaSetupArgFn = getSetupArgumentFn();
   llvm::BasicBlock *EndBlock = CGF.createBasicBlock("setup.end");
