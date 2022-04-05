@@ -6060,6 +6060,9 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (Args.hasArg(options::OPT_fopenmp_new_driver))
     CmdArgs.push_back("-fopenmp-new-driver");
 
+  if (Args.hasArg(options::OPT_cudaomp))
+    CmdArgs.push_back("-cudaomp");
+
   SanitizeArgs.addArgs(TC, Args, CmdArgs, InputType);
 
   const XRayArgs &XRay = TC.getXRayArgs();
