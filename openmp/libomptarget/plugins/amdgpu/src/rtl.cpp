@@ -1093,12 +1093,18 @@ static uint64_t acquire_available_packet_id(hsa_queue_t *queue) {
 int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
                         ptrdiff_t *tgt_offsets, int32_t arg_num,
                         int32_t num_teams, int32_t thread_limit,
-                        uint64_t loop_tripcount) {
+                        uint64_t loop_tripcount,
+                        int32_t grid_dim_x, int32_t grid_dim_y, int32_t grid_dim_z,
+                        int32_t block_dim_x, int32_t block_dim_y, int32_t block_dim_z) {
   // Set the context we are using
   // update thread limit content in gpu memory if un-initialized or specified
   // from host
 
-  DP("Run target team region thread_limit %d\n", thread_limit);
+  // TODO: More robust condition to determine if launching an OpenMP kernel or not
+  bool isOpenMPKernel = (num_teams > 0) || (thread_limit > 0) || (loop_tripcount > 0);
+
+  if (thread_limit > 0)
+    DP("Run target team region thread_limit %d\n", thread_limit);
 
   // All args are references.
   std::vector<void *> args(arg_num);
@@ -1106,7 +1112,11 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
 
   DP("Arg_num: %d\n", arg_num);
   for (int32_t i = 0; i < arg_num; ++i) {
-    ptrs[i] = (void *)((intptr_t)tgt_args[i] + tgt_offsets[i]);
+    if (tgt_offsets) {
+      ptrs[i] = (void *)((intptr_t)tgt_args[i] + tgt_offsets[i]);
+    } else {
+      ptrs[i] = (void *)((intptr_t)tgt_args[i]);
+    }
     args[i] = &ptrs[i];
     DP("Offseted base: arg[%d]:" DPxMOD "\n", i, DPxPTR(ptrs[i]));
   }
@@ -1131,32 +1141,37 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
 
   assert(arg_num == (int)KernelInfoEntry.explicit_argument_count);
 
-  /*
-   * Set limit based on ThreadsPerGroup and GroupsPerDevice
-   */
-  launchVals LV =
-      getLaunchVals(DeviceInfo.WarpSize[device_id], DeviceInfo.Env,
-                    KernelInfo->ConstWGSize, KernelInfo->ExecutionMode,
-                    num_teams,      // From run_region arg
-                    thread_limit,   // From run_region arg
-                    loop_tripcount, // From run_region arg
-                    DeviceInfo.NumTeams[KernelInfo->device_id]);
-  const int GridSize = LV.GridSize;
-  const int WorkgroupSize = LV.WorkgroupSize;
+  if (isOpenMPKernel){
+    /*
+    * Set limit based on ThreadsPerGroup and GroupsPerDevice
+    */
+    launchVals LV =
+        getLaunchVals(DeviceInfo.WarpSize[device_id], DeviceInfo.Env,
+                      KernelInfo->ConstWGSize, KernelInfo->ExecutionMode,
+                      num_teams,      // From run_region arg
+                      thread_limit,   // From run_region arg
+                      loop_tripcount, // From run_region arg
+                      DeviceInfo.NumTeams[KernelInfo->device_id]);
+    const int GridSize = LV.GridSize;
+    const int WorkgroupSize = LV.WorkgroupSize;
 
-  if (print_kernel_trace >= LAUNCH) {
-    int num_groups = GridSize / WorkgroupSize;
-    // enum modes are SPMD, GENERIC, NONE 0,1,2
-    // if doing rtl timing, print to stderr, unless stdout requested.
-    bool traceToStdout = print_kernel_trace & (RTL_TO_STDOUT | RTL_TIMING);
-    fprintf(traceToStdout ? stdout : stderr,
-            "DEVID:%2d SGN:%1d ConstWGSize:%-4d args:%2d teamsXthrds:(%4dX%4d) "
-            "reqd:(%4dX%4d) lds_usage:%uB sgpr_count:%u vgpr_count:%u "
-            "sgpr_spill_count:%u vgpr_spill_count:%u tripcount:%lu n:%s\n",
-            device_id, KernelInfo->ExecutionMode, KernelInfo->ConstWGSize,
-            arg_num, num_groups, WorkgroupSize, num_teams, thread_limit,
-            group_segment_size, sgpr_count, vgpr_count, sgpr_spill_count,
-            vgpr_spill_count, loop_tripcount, KernelInfo->Name);
+    if (print_kernel_trace >= LAUNCH) {
+      int num_groups = GridSize / WorkgroupSize;
+      // enum modes are SPMD, GENERIC, NONE 0,1,2
+      // if doing rtl timing, print to stderr, unless stdout requested.
+      bool traceToStdout = print_kernel_trace & (RTL_TO_STDOUT | RTL_TIMING);
+      fprintf(traceToStdout ? stdout : stderr,
+              "DEVID:%2d SGN:%1d ConstWGSize:%-4d args:%2d teamsXthrds:(%4dX%4d) "
+              "reqd:(%4dX%4d) lds_usage:%uB sgpr_count:%u vgpr_count:%u "
+              "sgpr_spill_count:%u vgpr_spill_count:%u tripcount:%lu n:%s\n",
+              device_id, KernelInfo->ExecutionMode, KernelInfo->ConstWGSize,
+              arg_num, num_groups, WorkgroupSize, num_teams, thread_limit,
+              group_segment_size, sgpr_count, vgpr_count, sgpr_spill_count,
+              vgpr_spill_count, loop_tripcount, KernelInfo->Name);
+    }
+
+    block_dim_x = WorkgroupSize;
+    grid_dim_x = GridSize;
   }
 
   // Run on the device.
@@ -1174,13 +1189,13 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
 
     // packet->header is written last
     packet->setup = UINT16_C(1) << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
-    packet->workgroup_size_x = WorkgroupSize;
-    packet->workgroup_size_y = 1;
-    packet->workgroup_size_z = 1;
+    packet->workgroup_size_x = block_dim_x;
+    packet->workgroup_size_y = block_dim_y;
+    packet->workgroup_size_z = block_dim_z;
     packet->reserved0 = 0;
-    packet->grid_size_x = GridSize;
-    packet->grid_size_y = 1;
-    packet->grid_size_z = 1;
+    packet->grid_size_x = grid_dim_x;
+    packet->grid_size_y = grid_dim_y;
+    packet->grid_size_z = grid_dim_z;
     packet->private_segment_size = KernelInfoEntry.private_segment_size;
     packet->group_segment_size = KernelInfoEntry.group_segment_size;
     packet->kernel_object = KernelInfoEntry.kernel_object;
@@ -2264,6 +2279,41 @@ int32_t __tgt_rtl_data_delete(int device_id, void *tgt_ptr) {
   return OFFLOAD_SUCCESS;
 }
 
+int32_t __tgt_rtl_run_kernel_async(int32_t device_id, void *tgt_entry_ptr,
+                                   void **tgt_args, int32_t grid_dim_x,
+                                   int32_t grid_dim_y, int32_t grid_dim_z,
+                                   int32_t block_dim_x, int32_t block_dim_y,
+                                   int32_t block_dim_z, size_t shared_mem,
+                                   __tgt_async_info *async_info_ptr) {
+
+  // Obtain KernelInfoEntry in order to pass on the explicit argument count
+  KernelTy *KernelInfo = (KernelTy *)tgt_entry_ptr;
+  std::string kernel_name = std::string(KernelInfo->Name);
+  auto &KernelInfoTable = DeviceInfo.KernelInfoTable;
+  if (KernelInfoTable[device_id].find(kernel_name) ==
+      KernelInfoTable[device_id].end()) {
+    DP("Kernel %s not found\n", kernel_name.c_str());
+    return OFFLOAD_FAIL;
+      }
+  const atl_kernel_info_t KernelInfoEntry =
+      KernelInfoTable[device_id][kernel_name];
+
+
+  DeviceInfo.load_run_lock.lock_shared();
+  int32_t res =
+      runRegionLocked(device_id, tgt_entry_ptr, tgt_args, 
+                                          /* tgt_offsets */ nullptr,
+                                          /* arg_num */ (int)KernelInfoEntry.explicit_argument_count, 
+                                          /* num_teams */ 1,
+                                          /* thread_limit */ -1 /* not required if non-OpenMP kernel */,
+                                          /* loop_tripcount */ -1 /* not required if non-OpenMP kernel */,
+                                          grid_dim_x, grid_dim_y, grid_dim_z,
+                                          block_dim_x, block_dim_y, block_dim_z);
+
+  DeviceInfo.load_run_lock.unlock_shared();
+  return res;                       
+}
+
 int32_t __tgt_rtl_run_target_team_region(int32_t device_id, void *tgt_entry_ptr,
                                          void **tgt_args,
                                          ptrdiff_t *tgt_offsets,
@@ -2274,7 +2324,9 @@ int32_t __tgt_rtl_run_target_team_region(int32_t device_id, void *tgt_entry_ptr,
   DeviceInfo.load_run_lock.lock_shared();
   int32_t res =
       runRegionLocked(device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num,
-                      num_teams, thread_limit, loop_tripcount);
+                      num_teams, thread_limit, loop_tripcount,
+                      /* grid_dim_x */ 0, /* grid_dim_y */ 0, /* grid_dim_z */ 0,
+                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0);
 
   DeviceInfo.load_run_lock.unlock_shared();
   return res;
@@ -2303,7 +2355,9 @@ int32_t __tgt_rtl_run_target_team_region_async(
   DeviceInfo.load_run_lock.lock_shared();
   int32_t res =
       runRegionLocked(device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num,
-                      num_teams, thread_limit, loop_tripcount);
+                      num_teams, thread_limit, loop_tripcount,
+                      /* grid_dim_x */ 0, /* grid_dim_y */ 0, /* grid_dim_z */ 0,
+                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0);
 
   DeviceInfo.load_run_lock.unlock_shared();
   return res;
