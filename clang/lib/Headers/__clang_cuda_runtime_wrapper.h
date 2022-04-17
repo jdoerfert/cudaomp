@@ -84,6 +84,8 @@
 
 #ifndef __CUDAOMP_AMD__
 #include "__clang_cuda_builtin_vars.h"
+#else
+#include "__clang_cuda_to_hip_builtin_vars.h"
 #endif
 
 // No need for device_launch_parameters.h as __clang_cuda_builtin_vars.h above

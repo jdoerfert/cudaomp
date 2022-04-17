@@ -8285,24 +8285,44 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
   // Get the AMDGPU math libraries.
   // FIXME: This method is bad, remove once AMDGPU has a proper math library
   // (see AMDGCN::OpenMPLinker::constructLLVMLinkCommand).
-  for (auto &I : llvm::make_range(OpenMPTCRange.first, OpenMPTCRange.second)) {
-    const ToolChain *TC = I.second;
+  for (Action::OffloadKind Kind : {Action::OFK_Cuda, Action::OFK_OpenMP}) {
+    auto TCRange = C.getOffloadToolChains(Kind);
+    for (auto &I : llvm::make_range(TCRange.first, TCRange.second)) {
+      const ToolChain *TC = I.second;
 
-    if (!TC->getTriple().isAMDGPU() || Args.hasArg(options::OPT_nogpulib))
-      continue;
+      if (Kind == Action::OFK_OpenMP) {
+        if (!TC->getTriple().isAMDGPU() || Args.hasArg(options::OPT_nogpulib))
+          continue;
+      } 
 
-    const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
-    StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
-    const toolchains::ROCMToolChain RocmTC(TC->getDriver(), TC->getTriple(),
-                                           TCArgs);
+      const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
+      StringRef Arch;                                                                                                                                                                                                   
+      for (auto &Arg : Args)                                                                                                                                                                                           
+        if (Arg->getOption().matches(options::OPT_offload_arch_EQ))                                                                                                                                                     
+          Arch = Arg->getValue(); 
+      const toolchains::ROCMToolChain RocmTC(TC->getDriver(), TC->getTriple(),
+                                            TCArgs);
 
-    SmallVector<std::string, 12> BCLibs =
-        RocmTC.getCommonDeviceLibNames(TCArgs, Arch.str());
+      SmallVector<std::string, 12> BCLibs =
+          RocmTC.getCommonDeviceLibNames(TCArgs, Arch.str());
 
-    for (StringRef LibName : BCLibs)
-      CmdArgs.push_back(
-          Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() + "-" +
-                             Arch + "=" + LibName));
+      for (StringRef LibName : BCLibs)
+        CmdArgs.push_back(
+            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() + "-" +
+                              Arch + "=" + LibName));
+
+      if (Kind == Action::OFK_Cuda && Args.hasArg(options::OPT_cudaomp)) {
+        const Driver &TCDriver = TC->getDriver();
+        ArgStringList MathLibrary;
+        addOpenMPMathRTL(TCDriver, TCArgs, MathLibrary, TC->getTriple(), true);
+        if (!MathLibrary.empty()) {
+          printf("\n\n in MathLibrary! \n\n");
+          CmdArgs.push_back(
+              Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
+                                "-" + Arch + "=" + MathLibrary.back()));
+        }
+      }
+    }
   }
 
   if (D.isUsingLTO(/* IsOffload */ true)) {
