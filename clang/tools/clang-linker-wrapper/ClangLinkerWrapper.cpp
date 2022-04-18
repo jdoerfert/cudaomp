@@ -16,6 +16,7 @@
 
 #include "OffloadWrapper.h"
 #include "clang/Basic/Version.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -46,6 +47,7 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 
 using namespace llvm;
 using namespace llvm::object;
@@ -900,6 +902,8 @@ std::unique_ptr<lto::LTO> createLTO(
 
   Conf.CPU = Arch.str();
   Conf.Options = codegen::InitTargetOptionsFromCodeGenFlags(TheTriple);
+  //Conf.StatsFile = "lto.stats";
+  //Conf.DebugPassManager= true;
 
   Conf.MAttrs = getTargetFeatures(TheTriple);
   Conf.CGOptLevel = getCGOptLevel(OptLevel[1] - '0');
@@ -1201,6 +1205,7 @@ Expected<std::string> compileModule(Module &M) {
 
   legacy::PassManager CodeGenPasses;
   TargetLibraryInfoImpl TLII(Triple(M.getTargetTriple()));
+  CodeGenPasses.add(createTargetTransformInfoWrapperPass(TargetIRAnalysis()));
   CodeGenPasses.add(new TargetLibraryInfoWrapperPass(TLII));
   if (TM->addPassesToEmitFile(CodeGenPasses, *OS, nullptr, CGFT_ObjectFile))
     return createStringError(inconvertibleErrorCode(),

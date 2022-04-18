@@ -9052,6 +9052,8 @@ private:
     auto *PtrTy = llvm::dyn_cast<llvm::PointerType>(Ty);
     if (PtrTy && PtrTy->getAddressSpace() == FromAS)
       return llvm::PointerType::getWithSamePointeeType(PtrTy, ToAS);
+    if (Ty->getScalarSizeInBits() < 64)
+      return llvm::Type::getInt8PtrTy(Ty->getContext(), ToAS);
     return Ty;
   }
 
@@ -9187,7 +9189,7 @@ ABIArgInfo AMDGPUABIInfo::classifyKernelArgumentType(QualType Ty) const {
 
   llvm::Type *OrigLTy = CGT.ConvertType(Ty);
   llvm::Type *LTy = OrigLTy;
-  if (getContext().getLangOpts().HIP) {
+  if (getContext().getLangOpts().HIP || getContext().getLangOpts().CUDA) {
     LTy = coerceKernelArgumentType(
         OrigLTy, /*FromAS=*/getContext().getTargetAddressSpace(LangAS::Default),
         /*ToAS=*/getContext().getTargetAddressSpace(LangAS::cuda_device));
@@ -9330,7 +9332,8 @@ void AMDGPUTargetCodeGenInfo::setFunctionDeclAttributes(
       M.getLangOpts().OpenCL ? FD->getAttr<ReqdWorkGroupSizeAttr>() : nullptr;
   const bool IsOpenCLKernel =
       M.getLangOpts().OpenCL && FD->hasAttr<OpenCLKernelAttr>();
-  const bool IsHIPKernel = M.getLangOpts().HIP && FD->hasAttr<CUDAGlobalAttr>();
+  //const bool IsHIPKernel = M.getLangOpts().HIP && FD->hasAttr<CUDAGlobalAttr>();
+  const bool IsHIPKernel = FD && FD->hasAttr<CUDAGlobalAttr>();
 
   const auto *FlatWGS = FD->getAttr<AMDGPUFlatWorkGroupSizeAttr>();
   if (ReqdWGS || FlatWGS) {
@@ -9418,8 +9421,7 @@ void AMDGPUTargetCodeGenInfo::setTargetAttributes(
   if (FD)
     setFunctionDeclAttributes(FD, F, M);
 
-  const bool IsHIPKernel =
-      M.getLangOpts().HIP && FD && FD->hasAttr<CUDAGlobalAttr>();
+  const bool IsHIPKernel = FD && FD->hasAttr<CUDAGlobalAttr>();
 
   if (IsHIPKernel)
     F->addFnAttr("uniform-work-group-size", "true");

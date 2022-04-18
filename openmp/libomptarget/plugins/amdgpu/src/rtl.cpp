@@ -1095,13 +1095,10 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
                         int32_t num_teams, int32_t thread_limit,
                         uint64_t loop_tripcount,
                         int32_t grid_dim_x, int32_t grid_dim_y, int32_t grid_dim_z,
-                        int32_t block_dim_x, int32_t block_dim_y, int32_t block_dim_z) {
+                        int32_t block_dim_x, int32_t block_dim_y, int32_t block_dim_z, bool IsOpenMPKernel) {
   // Set the context we are using
   // update thread limit content in gpu memory if un-initialized or specified
   // from host
-
-  // TODO: More robust condition to determine if launching an OpenMP kernel or not
-  bool isOpenMPKernel = (num_teams > 0) || (thread_limit > 0) || (loop_tripcount > 0);
 
   if (thread_limit > 0)
     DP("Run target team region thread_limit %d\n", thread_limit);
@@ -1118,7 +1115,10 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
       ptrs[i] = (void *)((intptr_t)tgt_args[i]);
     }
     args[i] = &ptrs[i];
-    DP("Offseted base: arg[%d]:" DPxMOD "\n", i, DPxPTR(ptrs[i]));
+  }
+  void **KernelArgs = IsOpenMPKernel ? &args[0] : &ptrs[0];
+  for (int32_t i = 0; i < arg_num; ++i) {
+    DP("Offseted base: arg[%d]:" DPxMOD "\n", i, DPxPTR(KernelArgs[i]));
   }
 
   KernelTy *KernelInfo = (KernelTy *)tgt_entry_ptr;
@@ -1141,7 +1141,7 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
 
   assert(arg_num == (int)KernelInfoEntry.explicit_argument_count);
 
-  if (isOpenMPKernel){
+  if (IsOpenMPKernel){
     /*
     * Set limit based on ThreadsPerGroup and GroupsPerDevice
     */
@@ -1193,9 +1193,10 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
     packet->workgroup_size_y = block_dim_y;
     packet->workgroup_size_z = block_dim_z;
     packet->reserved0 = 0;
-    packet->grid_size_x = grid_dim_x;
-    packet->grid_size_y = grid_dim_y;
-    packet->grid_size_z = grid_dim_z;
+    packet->grid_size_x = grid_dim_x * packet->workgroup_size_x;
+    packet->grid_size_y = grid_dim_y * packet->workgroup_size_y;
+    packet->grid_size_z = grid_dim_z * packet->workgroup_size_z;
+    DP("[%i|%i|%i] - [%i|%i|%i]\n", packet->workgroup_size_x, packet->workgroup_size_y, packet->workgroup_size_z, packet->grid_size_x, packet->grid_size_y, packet->grid_size_z);
     packet->private_segment_size = KernelInfoEntry.private_segment_size;
     packet->group_segment_size = KernelInfoEntry.group_segment_size;
     packet->kernel_object = KernelInfoEntry.kernel_object;
@@ -1217,7 +1218,7 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
     }
     {
       if (ArgPool) {
-        assert(ArgPool->kernarg_segment_size == (arg_num * sizeof(void *)));
+        assert(ArgPool->kernarg_segment_size >= (arg_num * sizeof(void *)));
         kernarg = ArgPool->allocate(arg_num);
       }
       if (!kernarg) {
@@ -1227,7 +1228,7 @@ int32_t runRegionLocked(int32_t device_id, void *tgt_entry_ptr, void **tgt_args,
 
       // Copy explicit arguments
       for (int i = 0; i < arg_num; i++) {
-        memcpy((char *)kernarg + sizeof(void *) * i, args[i], sizeof(void *));
+        memcpy((char *)kernarg + sizeof(void *) * i, KernelArgs[i], sizeof(void *));
       }
 
       // Initialize implicit arguments. TODO: Which of these can be dropped
@@ -2301,17 +2302,17 @@ int32_t __tgt_rtl_run_kernel_async(int32_t device_id, void *tgt_entry_ptr,
 
   DeviceInfo.load_run_lock.lock_shared();
   int32_t res =
-      runRegionLocked(device_id, tgt_entry_ptr, tgt_args, 
+      runRegionLocked(device_id, tgt_entry_ptr, tgt_args,
                                           /* tgt_offsets */ nullptr,
-                                          /* arg_num */ (int)KernelInfoEntry.explicit_argument_count, 
+                                          /* arg_num */ (int)KernelInfoEntry.explicit_argument_count,
                                           /* num_teams */ -1 /* not required if non-OpenMP kernel */,
                                           /* thread_limit */ -1 /* not required if non-OpenMP kernel */,
                                           /* loop_tripcount */ -1 /* not required if non-OpenMP kernel */,
                                           grid_dim_x, grid_dim_y, grid_dim_z,
-                                          block_dim_x, block_dim_y, block_dim_z);
+                                          block_dim_x, block_dim_y, block_dim_z, false);
 
   DeviceInfo.load_run_lock.unlock_shared();
-  return res;                       
+  return res;
 }
 
 int32_t __tgt_rtl_run_target_team_region(int32_t device_id, void *tgt_entry_ptr,
@@ -2326,7 +2327,7 @@ int32_t __tgt_rtl_run_target_team_region(int32_t device_id, void *tgt_entry_ptr,
       runRegionLocked(device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num,
                       num_teams, thread_limit, loop_tripcount,
                       /* grid_dim_x */ 0, /* grid_dim_y */ 0, /* grid_dim_z */ 0,
-                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0);
+                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0, true);
 
   DeviceInfo.load_run_lock.unlock_shared();
   return res;
@@ -2357,7 +2358,7 @@ int32_t __tgt_rtl_run_target_team_region_async(
       runRegionLocked(device_id, tgt_entry_ptr, tgt_args, tgt_offsets, arg_num,
                       num_teams, thread_limit, loop_tripcount,
                       /* grid_dim_x */ 0, /* grid_dim_y */ 0, /* grid_dim_z */ 0,
-                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0);
+                      /* block_dim_x */ 0, /* block_dim_y */ 0, /* block_dim_z */ 0, true);
 
   DeviceInfo.load_run_lock.unlock_shared();
   return res;

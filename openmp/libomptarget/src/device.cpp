@@ -530,6 +530,7 @@ int32_t DeviceTy::submitData(void *TgtPtrBegin, void *HstPtrBegin, int64_t Size,
   if (getInfoLevel() & OMP_INFOTYPE_DATA_TRANSFER) {
     HDTTMapAccessorTy HDTTMap = HostDataToTargetMap.getExclusiveAccessor();
     LookupResult LR = lookupMapping(HDTTMap, HstPtrBegin, Size);
+    if (LR.Entry) {
     auto *HT = &*LR.Entry;
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, DeviceID,
@@ -538,6 +539,7 @@ int32_t DeviceTy::submitData(void *TgtPtrBegin, void *HstPtrBegin, int64_t Size,
          DPxPTR(HstPtrBegin), DPxPTR(TgtPtrBegin), Size,
          (HT && HT->HstPtrName) ? getNameFromMapping(HT->HstPtrName).c_str()
                                 : "unknown");
+    }
   }
 
   if (!AsyncInfo || !RTL->data_submit_async || !RTL->synchronize)
@@ -553,6 +555,7 @@ int32_t DeviceTy::retrieveData(void *HstPtrBegin, void *TgtPtrBegin,
   if (getInfoLevel() & OMP_INFOTYPE_DATA_TRANSFER) {
     HDTTMapAccessorTy HDTTMap = HostDataToTargetMap.getExclusiveAccessor();
     LookupResult LR = lookupMapping(HDTTMap, HstPtrBegin, Size);
+    if (LR.Entry) {
     auto *HT = &*LR.Entry;
     INFO(OMP_INFOTYPE_DATA_TRANSFER, DeviceID,
          "Copying data from device to host, TgtPtr=" DPxMOD ", HstPtr=" DPxMOD
@@ -560,6 +563,7 @@ int32_t DeviceTy::retrieveData(void *HstPtrBegin, void *TgtPtrBegin,
          DPxPTR(TgtPtrBegin), DPxPTR(HstPtrBegin), Size,
          (HT && HT->HstPtrName) ? getNameFromMapping(HT->HstPtrName).c_str()
                                 : "unknown");
+    }
   }
 
   if (!RTL->data_retrieve_async || !RTL->synchronize)

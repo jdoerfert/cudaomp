@@ -13,15 +13,20 @@
 #error "This file is for HIP and OpenMP AMDGCN device compilation only."
 #endif
 
+#define __x86_64__
 #include <stdint.h>
 #include <limits.h>
 
 #pragma push_macro("__DEVICE__")
 
 #ifdef __OPENMP_AMDGCN__
-#define __DEVICE__ static inline __attribute__((always_inline, nothrow))
+#if defined(__cplusplus)
+#define __DEVICE__ __attribute__((always_inline, nothrow))
 #else
-#define __DEVICE__ static __device__ inline __attribute__((always_inline))
+#define __DEVICE__ __attribute__((always_inline, nothrow))
+#endif
+#else
+#define __DEVICE__ __device__ __forceinline__
 #endif
 
 // A few functions return bool type starting only in C++11.
@@ -57,7 +62,9 @@ __DEVICE__ void __static_assert_equal_size() {
 
 #endif
 
+#if defined(__cplusplus)
 extern "C" {
+#endif
 
 __DEVICE__
 uint64_t __make_mantissa_base8(const char *__tagp) {
@@ -551,7 +558,13 @@ float ynf(int __n, float __x) { // TODO: we could use Ahmes multiplication
 
   return __x1;
 }
+#if defined(__cplusplus)
 }
+#endif
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 // BEGIN INTRINSICS
 
@@ -1258,6 +1271,9 @@ double __fma_rn(double __x, double __y, double __z) {
 // END INTRINSICS
 // END DOUBLE
 
+#if defined(__cplusplus)
+}
+#endif
 // C only macros
 #if !defined(__cplusplus) && __STDC_VERSION__ >= 201112L
 #define isfinite(__x) _Generic((__x), float : __finitef, double : __finite)(__x)

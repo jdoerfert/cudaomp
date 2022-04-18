@@ -90,7 +90,7 @@ static unsigned __offload_entries_counter = 0;
 inline unsigned __cudaPushCallConfiguration(dim3 __grid_size, dim3 __block_size,
                                             size_t __shared_memory = 0,
                                             cudaStream_t __stream = 0) {
-  DEBUGP("===> __cudaPushCallConfiguration\n");
+  //DEBUGP("===> __cudaPushCallConfiguration\n");
   __omp_kernel_t &__kernel = __current_kernel;
   __kernel.__grid_size = __grid_size;
   __kernel.__block_size = __block_size;
@@ -103,7 +103,7 @@ inline unsigned __cudaPopCallConfiguration(dim3 *__grid_size,
                                            dim3 *__block_size,
                                            size_t *__shared_memory,
                                            void *__stream) {
-  DEBUGP("===> __cudaPopCallConfiguration\n");
+  //DEBUGP("===> __cudaPopCallConfiguration\n");
   __omp_kernel_t &__kernel = __current_kernel;
   *__grid_size = __kernel.__grid_size;
   *__block_size = __kernel.__block_size;
@@ -117,9 +117,9 @@ inline cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim,
                                     size_t sharedMem = 0, cudaStream_t stream = 0) {
   __omp_kernel_t &__kernel = __current_kernel;
 
-  DEBUGP("===> overloaded cudaLaunchKernel grid [%d,%d,%d] blocks, block [%d,%d,%d] "
-         "threads\n",
-         gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z);
+  //DEBUGP("===> overloaded cudaLaunchKernel grid [%d,%d,%d] blocks, block [%d,%d,%d] "
+         //"threads\n",
+         //gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z);
   int rv = __tgt_kernel(omp_get_default_device(), func, args, gridDim.x, gridDim.y,
                gridDim.z, blockDim.x, blockDim.y, blockDim.z, sharedMem,
                stream);
@@ -131,8 +131,8 @@ __attribute__((weak)) __attribute__((noinline)) void __cudaRegisterFunction(void
                             char *deviceFun, const char *deviceName,
                             int thread_limit, uint3 *tid, uint3 *bid,
                             dim3 *bDim, dim3 *gDim, int *wSize) {
-  DEBUGP("===> cudaRegisterFunction cnt %d\n", __offload_entries_counter);
-  DEBUGP("===> deviceName %s\n", deviceFun);
+  //DEBUGP("===> cudaRegisterFunction cnt %d\n", __offload_entries_counter);
+  //DEBUGP("===> deviceName %s\n", deviceFun);
   // Assign is fine, global symbols.
   __offload_entries[__offload_entries_counter].addr = (void *)hostFun;
   __offload_entries[__offload_entries_counter].name = deviceFun;
@@ -146,11 +146,11 @@ __attribute__((weak)) __attribute__((noinline)) void __cudaRegisterFunction(void
 // TODO: return a pointer to an internal handle.
 __attribute__((weak)) __attribute__((noinline)) void **__cudaRegisterFatBinary(void *fatCubin) {
   struct __cuda_fatbin_wrapper_t *header = (struct __cuda_fatbin_wrapper_t *)fatCubin;
-  DEBUGP("===> magic %x\n", header->magic);
+  //DEBUGP("===> magic %x\n", header->magic);
   struct fatBinaryHeader *header2 = (struct fatBinaryHeader *)header->gpu_binary;
-  DEBUGP("===> magic2 %x\n", header2->magic);
-  DEBUGP("===> headersize %d\n", header2->headerSize);
-  DEBUGP("===> fatSize %llu\n", header2->fatSize);
+  //DEBUGP("===> magic2 %x\n", header2->magic);
+  //DEBUGP("===> headersize %d\n", header2->headerSize);
+  //DEBUGP("===> fatSize %llu\n", header2->fatSize);
   char *ImageStart = (char *)header->gpu_binary;
   //int offset;
   //for (offset = 0; offset < 128; offset++) {
@@ -168,7 +168,7 @@ __attribute__((weak)) __attribute__((noinline)) void **__cudaRegisterFatBinary(v
 }
 
 __attribute__((weak)) __attribute__((noinline))void __cudaRegisterFatBinaryEnd(void **fatCubinHandle){
-  DEBUGP("===> __cudaRegisterFatBinaryEnd\n");
+  //DEBUGP("===> __cudaRegisterFatBinaryEnd\n");
   // The descriptor and call to tgt_register_lib should be done in this
   // end function, after cuda_register_globals registers functions, vars.
   __device_image.EntriesBegin = &__offload_entries[0];
@@ -179,7 +179,7 @@ __attribute__((weak)) __attribute__((noinline))void __cudaRegisterFatBinaryEnd(v
 }
 
 __attribute__((weak)) __attribute__((noinline))void __cudaUnregisterFatBinary(void *handle){
-  DEBUGP("===> __cudaUnregisterFatBinary\n");
+  //DEBUGP("===> __cudaUnregisterFatBinary\n");
   __tgt_unregister_lib(&__bin_desc);
 }
 
@@ -193,7 +193,7 @@ __attribute__((weak)) __attribute__((noinline)) void __cudaRegisterVar(
         int    constant,
         int    global
 ) {
-  DEBUGP("===> __cudaRegisterVar\n");
+  //DEBUGP("===> __cudaRegisterVar\n");
 /*   DEBUGP("           fatCubinHandle is %p \n", fatCubinHandle);
   DEBUGP("           hostVar is %p \n", hostVar);
   DEBUGP("           deviceVar is %s \n", deviceVar);

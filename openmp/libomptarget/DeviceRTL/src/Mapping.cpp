@@ -44,10 +44,62 @@ uint32_t getWorkgroupDim(uint32_t group_id, uint32_t grid_size,
   return (r < group_size) ? r : group_size;
 }
 
-uint32_t getNumHardwareThreadsInBlock() {
-  return getWorkgroupDim(__builtin_amdgcn_workgroup_id_x(),
-                         __builtin_amdgcn_grid_size_x(),
-                         __builtin_amdgcn_workgroup_size_x());
+uint32_t getThreadIdInBlock(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __builtin_amdgcn_workitem_id_x();
+    case 1:
+  return __builtin_amdgcn_workitem_id_y();
+    case 2:
+  return __builtin_amdgcn_workitem_id_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
+
+uint32_t getKernelSize(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __builtin_amdgcn_grid_size_x();
+    case 1:
+  return __builtin_amdgcn_grid_size_y();
+    case 2:
+  return __builtin_amdgcn_grid_size_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
+
+uint32_t getBlockId(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __builtin_amdgcn_workgroup_id_x();
+    case 1:
+  return __builtin_amdgcn_workgroup_id_y();
+    case 2:
+  return __builtin_amdgcn_workgroup_id_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
+
+uint32_t getBlockSize(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __builtin_amdgcn_workgroup_size_x();
+    case 1:
+  return __builtin_amdgcn_workgroup_size_y();
+    case 2:
+  return __builtin_amdgcn_workgroup_size_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
+
+uint32_t getNumHardwareThreadsInBlock(int Dim = 0) {
+  return getWorkgroupDim(getBlockId(Dim),
+                         getKernelSize(Dim),
+                         getBlockSize(Dim));
 }
 
 LaneMaskTy activemask() { return __builtin_amdgcn_read_exec(); }
@@ -72,15 +124,10 @@ uint32_t getThreadIdInWarp() {
   return __builtin_amdgcn_mbcnt_hi(~0u, __builtin_amdgcn_mbcnt_lo(~0u, 0u));
 }
 
-uint32_t getThreadIdInBlock() { return __builtin_amdgcn_workitem_id_x(); }
 
-uint32_t getKernelSize() { return __builtin_amdgcn_grid_size_x(); }
-
-uint32_t getBlockId() { return __builtin_amdgcn_workgroup_id_x(); }
-
-uint32_t getNumberOfBlocks() {
-  return getGridDim(__builtin_amdgcn_grid_size_x(),
-                    __builtin_amdgcn_workgroup_size_x());
+uint32_t getNumberOfBlocks(int Dim = 0) {
+  return getGridDim(getKernelSize(Dim),
+                    getBlockSize(Dim));
 }
 
 uint32_t getWarpId() {
@@ -100,8 +147,17 @@ uint32_t getNumberOfWarpsInBlock() {
 #pragma omp begin declare variant match(                                       \
     device = {arch(nvptx, nvptx64)}, implementation = {extension(match_any)})
 
-uint32_t getNumHardwareThreadsInBlock() {
+uint32_t getNumHardwareThreadsInBlock(int Dim = 0) {
+  switch(Dim) {
+    case 0:
   return __nvvm_read_ptx_sreg_ntid_x();
+    case 1:
+  return __nvvm_read_ptx_sreg_ntid_y();
+    case 2:
+  return __nvvm_read_ptx_sreg_ntid_z();
+    default:break;
+  }
+  __builtin_unreachable();
 }
 
 static const llvm::omp::GV &getGridValue() {
@@ -126,23 +182,56 @@ LaneMaskTy lanemaskGT() {
   return Res;
 }
 
-uint32_t getThreadIdInBlock() { return __nvvm_read_ptx_sreg_tid_x(); }
+uint32_t getThreadIdInBlock(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __nvvm_read_ptx_sreg_tid_x();
+    case 1:
+  return __nvvm_read_ptx_sreg_tid_y();
+    case 2:
+  return __nvvm_read_ptx_sreg_tid_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
 
 uint32_t getThreadIdInWarp() {
   return impl::getThreadIdInBlock() & (mapping::getWarpSize() - 1);
 }
 
-uint32_t getKernelSize() {
+uint32_t getKernelSize(int Dim = 0) {
   return __nvvm_read_ptx_sreg_nctaid_x() *
          mapping::getNumberOfProcessorElements();
 }
 
-uint32_t getBlockId() { return __nvvm_read_ptx_sreg_ctaid_x(); }
+uint32_t getBlockId(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __nvvm_read_ptx_sreg_ctaid_x();
+    case 1:
+  return __nvvm_read_ptx_sreg_ctaid_y();
+    case 2:
+  return __nvvm_read_ptx_sreg_ctaid_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
 
-uint32_t getNumberOfBlocks() { return __nvvm_read_ptx_sreg_nctaid_x(); }
+uint32_t getNumberOfBlocks(int Dim = 0) {
+  switch(Dim) {
+    case 0:
+  return __nvvm_read_ptx_sreg_nctaid_x();
+    case 1:
+  return __nvvm_read_ptx_sreg_nctaid_y();
+    case 2:
+  return __nvvm_read_ptx_sreg_nctaid_z();
+    default:break;
+  }
+  __builtin_unreachable();
+}
 
-uint32_t getWarpId() {
-  return impl::getThreadIdInBlock() / mapping::getWarpSize();
+uint32_t getWarpId(int Dim = 0) {
+  return impl::getThreadIdInBlock(Dim) / mapping::getWarpSize();
 }
 
 uint32_t getNumberOfWarpsInBlock() {
@@ -204,9 +293,9 @@ uint32_t mapping::getThreadIdInWarp() {
   return ThreadIdInWarp;
 }
 
-uint32_t mapping::getThreadIdInBlock() {
-  uint32_t ThreadIdInBlock = impl::getThreadIdInBlock();
-  ASSERT(ThreadIdInBlock < impl::getNumHardwareThreadsInBlock());
+uint32_t mapping::getThreadIdInBlock(int Dim) {
+  uint32_t ThreadIdInBlock = impl::getThreadIdInBlock(Dim);
+  ASSERT(ThreadIdInBlock < impl::getNumHardwareThreadsInBlock(Dim));
   return ThreadIdInBlock;
 }
 
@@ -229,9 +318,9 @@ uint32_t mapping::getWarpId() {
   return WarpID;
 }
 
-uint32_t mapping::getBlockId() {
-  uint32_t BlockId = impl::getBlockId();
-  ASSERT(BlockId < impl::getNumberOfBlocks());
+uint32_t mapping::getBlockId(int Dim) {
+  uint32_t BlockId = impl::getBlockId(Dim);
+  ASSERT(BlockId < impl::getNumberOfBlocks(Dim));
   return BlockId;
 }
 
@@ -241,8 +330,8 @@ uint32_t mapping::getNumberOfWarpsInBlock() {
   return NumberOfWarpsInBlocks;
 }
 
-uint32_t mapping::getNumberOfBlocks() {
-  uint32_t NumberOfBlocks = impl::getNumberOfBlocks();
+uint32_t mapping::getNumberOfBlocks(int Dim) {
+  uint32_t NumberOfBlocks = impl::getNumberOfBlocks(Dim);
   ASSERT(impl::getBlockId() < NumberOfBlocks);
   return NumberOfBlocks;
 }
@@ -278,10 +367,45 @@ __attribute__((noinline)) uint32_t __kmpc_get_hardware_thread_id_in_block() {
   FunctionTracingRAII();
   return mapping::getThreadIdInBlock();
 }
-
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_thread_id_in_block_x() {
+  return mapping::getThreadIdInBlock(/* Dim */ 0);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_thread_id_in_block_y() {
+  return mapping::getThreadIdInBlock(/* Dim */ 1);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_thread_id_in_block_z() {
+  return mapping::getThreadIdInBlock(/* Dim */ 2);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_block_id_in_grid_x() {
+  return mapping::getBlockId(/* Dim */ 0);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_block_id_in_grid_y() {
+  return mapping::getBlockId(/* Dim */ 1);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_block_id_in_grid_z() {
+  return mapping::getBlockId(/* Dim */ 2);
+}
 __attribute__((noinline)) uint32_t __kmpc_get_hardware_num_threads_in_block() {
   FunctionTracingRAII();
   return impl::getNumHardwareThreadsInBlock();
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_threads_in_block_x() {
+  return impl::getNumHardwareThreadsInBlock(/* Dim */ 0);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_threads_in_block_y() {
+  return impl::getNumHardwareThreadsInBlock(/* Dim */ 1);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_threads_in_block_z() {
+  return impl::getNumHardwareThreadsInBlock(/* Dim */ 2);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_blocks_in_grid_x() {
+  return impl::getNumberOfBlocks(/* Dim */ 0);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_blocks_in_grid_y() {
+  return impl::getNumberOfBlocks(/* Dim */ 1);
+}
+__attribute__((noinline)) uint32_t __kmpc_get_hardware_num_blocks_in_grid_z() {
+  return impl::getNumberOfBlocks(/* Dim */ 2);
 }
 
 __attribute__((noinline)) uint32_t __kmpc_get_warp_size() {

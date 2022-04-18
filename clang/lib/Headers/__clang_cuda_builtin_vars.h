@@ -10,6 +10,10 @@
 #ifndef __CUDA_BUILTIN_VARS_H
 #define __CUDA_BUILTIN_VARS_H
 
+#ifdef __CUDAOMP_AMD__
+#include "cuda_omp_files/__openmp_cuda_device_wrapper.h"
+#endif
+
 // Forward declares from vector_types.h.
 struct uint3;
 struct dim3;

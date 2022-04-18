@@ -64,7 +64,7 @@ LaneMaskTy lanemaskGT();
 uint32_t getThreadIdInWarp();
 
 /// Return the thread Id in the block, in [0, getBlockSize()).
-uint32_t getThreadIdInBlock();
+uint32_t getThreadIdInBlock(int Dim = 0);
 
 /// Return the warp id in the block.
 uint32_t getWarpId();
@@ -76,7 +76,7 @@ uint32_t getWarpSize();
 uint32_t getNumberOfWarpsInBlock();
 
 /// Return the block Id in the kernel, in [0, getKernelSize()).
-uint32_t getBlockId();
+uint32_t getBlockId(int Dim = 0);
 
 /// Return the block size, thus number of threads in the block.
 ///
@@ -87,7 +87,7 @@ uint32_t getBlockSize();
 uint32_t getBlockSize(bool IsSPMD);
 
 /// Return the number of blocks in the kernel.
-uint32_t getNumberOfBlocks();
+uint32_t getNumberOfBlocks(int Dim = 0);
 
 /// Return the kernel size, thus number of threads in the kernel.
 uint32_t getKernelSize();

@@ -733,10 +733,15 @@ void CudaToolChain::addClangTargetOptions(
   HostTC.addClangTargetOptions(DriverArgs, CC1Args, DeviceOffloadingKind);
 
   StringRef GpuArch = DriverArgs.getLastArgValue(options::OPT_march_EQ);
+  if (DriverArgs.hasArg(options::OPT_offload_arch_EQ))
+    GpuArch = DriverArgs.getLastArgValue(options::OPT_offload_arch_EQ);
   assert(!GpuArch.empty() && "Must have an explicit GPU arch.");
   assert((DeviceOffloadingKind == Action::OFK_OpenMP ||
           DeviceOffloadingKind == Action::OFK_Cuda) &&
          "Only OpenMP or CUDA offloading kinds are supported for NVIDIA GPUs.");
+  llvm::errs() << "GPUArch: " << GpuArch << "\n";
+  CC1Args.push_back("-target-cpu");
+  CC1Args.push_back((const char*)(GpuArch.bytes_begin()));
 
   if (DeviceOffloadingKind == Action::OFK_Cuda) {
     CC1Args.append(
@@ -807,6 +812,10 @@ void CudaToolChain::addClangTargetOptions(
 
     if (DriverArgs.hasArg(options::OPT_fopenmp_device_libm))
       addOpenMPMathRTL(getDriver(), DriverArgs, CC1Args, getTriple(), true);
+
+    if (DriverArgs.hasArg(options::OPT_cudaomp))
+      addOpenMPDeviceRTL(getDriver(), DriverArgs, CC1Args, GpuArch.str(),
+                        getTriple());
 
     CC1Args.push_back("-mlink-builtin-bitcode");
     CC1Args.push_back(DriverArgs.MakeArgString(LibDeviceFile));
@@ -931,8 +940,8 @@ void CudaToolChain::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
   HostTC.AddClangSystemIncludeArgs(DriverArgs, CC1Args);
   // In the case of cudaomp we don't want to include the cuda header files.
   // we provide our own
-  if (!(DriverArgs.hasArg(options::OPT_nogpuinc) || 
-        DriverArgs.hasArg(options::OPT_cudaomp)) && 
+  if (!(DriverArgs.hasArg(options::OPT_nogpuinc) ||
+        DriverArgs.hasArg(options::OPT_cudaomp)) &&
         CudaInstallation.isValid())
     CC1Args.append(
         {"-internal-isystem",

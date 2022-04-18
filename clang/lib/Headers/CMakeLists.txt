@@ -158,6 +158,7 @@ set(cuda_wrapper_files
 
 set(cuda_omp_files
   cuda_wrappers/cudaomp/__openmp_cuda_host_wrapper.h
+  cuda_wrappers/cudaomp/__openmp_cuda_device_wrapper.h
   cuda_wrappers/cudaomp/cuda.h
   cuda_wrappers/cudaomp/fatbinary_cuda.h
   cuda_wrappers/cudaomp/internal_types.h

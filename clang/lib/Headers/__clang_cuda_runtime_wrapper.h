@@ -34,9 +34,9 @@
 #include <__clang_cuda_math_forward_declares.h>
 
 #ifdef __CUDAOMP__
-#ifndef __CUDAOMP_AMD__
+//#ifndef __CUDAOMP_AMD__
 #include <__clang_cuda_builtin_vars.h>
-#endif
+//#endif
 #include "cuda_wrappers/cuda_omp_files/internal_types.h"
 #endif
 
@@ -54,7 +54,7 @@
 #include <limits.h>
 #undef __CUDACC__
 
-#define __forceinline__ __inline__ 
+#define __forceinline__ __inline__
 
 // Preserve common macros that will be changed below by us or by CUDA
 // headers.

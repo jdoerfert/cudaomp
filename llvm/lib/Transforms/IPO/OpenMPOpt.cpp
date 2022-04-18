@@ -806,6 +806,12 @@ struct OpenMPOpt {
                       << OMPInfoCache.ModuleSlice.size() << " functions\n");
 
     if (IsModulePass) {
+      if (isOpenMPDevice(M)) {
+        for (Function &F : M)
+          if (!F.hasLocalLinkage() && !F.isDeclaration())
+            if (F.getCallingConv() != CallingConv::AMDGPU_KERNEL)
+              F.setLinkage(GlobalValue::InternalLinkage);
+      }
       Changed |= runAttributor(IsModulePass);
 
       // Recollect uses, in case Attributor deleted any.

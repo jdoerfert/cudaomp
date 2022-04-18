@@ -6975,8 +6975,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
       StringRef Arch = File.rsplit(".").first.rsplit('-').second;
       CmdArgs.push_back(Args.MakeArgString(
           "-fembed-offload-object=" + File + "," +
-          Action::GetOffloadKindName(Action::OFK_Cuda) + "." +
-          TC->getTripleString() + "." + Arch + "." + InputName));
+          Action::GetOffloadKindName(Action::OFK_Cuda) + "," +
+          TC->getTripleString() + "," + Arch));// + "." + InputName));
     }
   }
 
@@ -8261,75 +8261,83 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
   // Get the AMDGPU math libraries.
   // FIXME: This method is bad, remove once AMDGPU has a proper math library
   // (see AMDGCN::OpenMPLinker::constructLLVMLinkCommand).
-  for (auto &I : llvm::make_range(OpenMPTCRange.first, OpenMPTCRange.second)) {
-    const ToolChain *TC = I.second;
+  for (Action::OffloadKind Kind : {Action::OFK_Cuda, Action::OFK_OpenMP}) {
+    auto TCRange = C.getOffloadToolChains(Kind);
+    for (auto &I : llvm::make_range(TCRange.first, TCRange.second)) {
+      const ToolChain *TC = I.second;
 
-    if (!TC->getTriple().isAMDGPU() || Args.hasArg(options::OPT_nogpulib))
-      continue;
+      if (!TC->getTriple().isAMDGPU()) // || Args.hasArg(options::OPT_nogpulib))
+        continue;
 
-    const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
-    StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
-    const toolchains::ROCMToolChain RocmTC(TC->getDriver(), TC->getTriple(),
-                                           TCArgs);
+      const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
+      StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
+      if (TCArgs.hasArg(options::OPT_offload_arch_EQ))
+        Arch = TCArgs.getLastArgValue(options::OPT_offload_arch_EQ);
+      const toolchains::ROCMToolChain RocmTC(TC->getDriver(), TC->getTriple(),
+                                            TCArgs);
 
-    SmallVector<std::string, 12> BCLibs =
-        RocmTC.getCommonDeviceLibNames(TCArgs, Arch.str());
+      SmallVector<std::string, 12> BCLibs =
+          RocmTC.getCommonDeviceLibNames(TCArgs, Arch.str());
 
-    for (StringRef LibName : BCLibs)
-      CmdArgs.push_back(Args.MakeArgString(
-          "-target-library=" + Action::GetOffloadKindName(Action::OFK_OpenMP) +
-          "-" + TC->getTripleString() + "-" + Arch + "=" + LibName));
+      for (StringRef LibName : BCLibs)
+        CmdArgs.push_back(Args.MakeArgString(
+            "-target-library=" + Action::GetOffloadKindName(Action::OFK_OpenMP) +
+            "-" + TC->getTripleString() + "-" + Arch + "=" + LibName));
+    }
   }
 
   if (D.isUsingLTO(/* IsOffload */ true)) {
     // Pass in target features for each toolchain.
-    for (auto &I :
-         llvm::make_range(OpenMPTCRange.first, OpenMPTCRange.second)) {
-      const ToolChain *TC = I.second;
-      const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
-      ArgStringList FeatureArgs;
-      TC->addClangTargetOptions(TCArgs, FeatureArgs, Action::OFK_OpenMP);
-      auto FeatureIt = llvm::find(FeatureArgs, "-target-feature");
-      if (FeatureIt != FeatureArgs.end())
-        CmdArgs.push_back(
-            Args.MakeArgString("-target-feature=" + TC->getTripleString() +
-                               "=" + *(FeatureIt + 1)));
-    }
+    for (Action::OffloadKind Kind : {Action::OFK_Cuda, Action::OFK_OpenMP}) {
+      auto TCRange = C.getOffloadToolChains(Kind);
+      for (auto &I : llvm::make_range(TCRange.first, TCRange.second)) {
+        const ToolChain *TC = I.second;
+        const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
+        ArgStringList FeatureArgs;
+        TC->addClangTargetOptions(TCArgs, FeatureArgs, Action::OFK_OpenMP);
+        auto FeatureIt = llvm::find(FeatureArgs, "-target-feature");
+        if (FeatureIt != FeatureArgs.end())
+          CmdArgs.push_back(
+              Args.MakeArgString("-target-feature=" + TC->getTripleString() +
+                                "=" + *(FeatureIt + 1)));
+      }
 
-    // Pass in the bitcode library to be linked during LTO.
-    for (auto &I :
-         llvm::make_range(OpenMPTCRange.first, OpenMPTCRange.second)) {
-      const ToolChain *TC = I.second;
-      if (!(TC->getTriple().isNVPTX() || TC->getTriple().isAMDGPU()))
-        continue;
+      // Pass in the bitcode library to be linked during LTO.
+      for (auto &I : llvm::make_range(TCRange.first, TCRange.second)) {
+        const ToolChain *TC = I.second;
+        if (!(TC->getTriple().isNVPTX() || TC->getTriple().isAMDGPU()))
+          continue;
 
-      const Driver &TCDriver = TC->getDriver();
-      const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
-      StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
+        const Driver &TCDriver = TC->getDriver();
+        const ArgList &TCArgs = C.getArgsForToolChain(TC, "", Action::OFK_OpenMP);
+        StringRef Arch = TCArgs.getLastArgValue(options::OPT_march_EQ);
+        if (TCArgs.hasArg(options::OPT_offload_arch_EQ))
+          Arch = TCArgs.getLastArgValue(options::OPT_offload_arch_EQ);
 
-      ArgStringList BitcodeLibrary;
-      addOpenMPDeviceRTL(TCDriver, TCArgs, BitcodeLibrary, Arch,
-                         TC->getTriple());
+        ArgStringList BitcodeLibrary;
+        addOpenMPDeviceRTL(TCDriver, TCArgs, BitcodeLibrary, Arch,
+                           TC->getTriple());
 
-      if (!BitcodeLibrary.empty())
-        CmdArgs.push_back(
-            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
-                               "-" + Arch + "=" + BitcodeLibrary.back()));
+        if (!BitcodeLibrary.empty())
+          CmdArgs.push_back(
+              Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
+                                "-" + Arch + "=" + BitcodeLibrary.back()));
 
-      ArgStringList MathLibrary;
-      addOpenMPMathRTL(TCDriver, TCArgs, MathLibrary, TC->getTriple(), true);
+        ArgStringList MathLibrary;
+        addOpenMPMathRTL(TCDriver, TCArgs, MathLibrary, TC->getTriple(), true);
 
-      if (!MathLibrary.empty())
-        CmdArgs.push_back(
-            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
-                               "-" + Arch + "=" + MathLibrary.back()));
+        if (!MathLibrary.empty())
+          CmdArgs.push_back(
+              Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
+                                "-" + Arch + "=" + MathLibrary.back()));
 
-      CudaInstallationDetector CudaInstallation(D, TheTriple, Args);
-      std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(Arch);
-      if (!LibDeviceFile.empty())
-        CmdArgs.push_back(
-            Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
-                               "-" + Arch + "=" + LibDeviceFile));
+        CudaInstallationDetector CudaInstallation(D, TheTriple, Args);
+        std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(Arch);
+        if (!LibDeviceFile.empty())
+          CmdArgs.push_back(
+              Args.MakeArgString("-target-library=openmp-" + TC->getTripleString() +
+                                "-" + Arch + "=" + LibDeviceFile));
+      }
     }
 
     // Pass in the optimization level to use for LTO.
