@@ -809,7 +809,7 @@ struct OpenMPOpt {
       if (isOpenMPDevice(M)) {
         for (Function &F : M)
           if (!F.hasLocalLinkage() && !F.isDeclaration())
-            if (F.getCallingConv() != CallingConv::AMDGPU_KERNEL)
+            if (!isKernel(F))
               F.setLinkage(GlobalValue::InternalLinkage);
       }
       Changed |= runAttributor(IsModulePass);

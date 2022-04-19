@@ -40,6 +40,36 @@ _NVVM_GETTER(x)
 _NVVM_GETTER(y)
 _NVVM_GETTER(z)
 
+#define _NOT_IMPLEMENTED\
+  DEBUGP("===> TODO FIX %s\n", __PRETTY_FUNCTION__); \
+  __builtin_trap();
+
+__attribute__((device,always_inline,flatten)) inline
+void __syncthreads() {
+  _NOT_IMPLEMENTED
+}
+__attribute__((device,always_inline,flatten)) inline
+int __syncthreads_and(int p) {
+  _NOT_IMPLEMENTED
+}
+__attribute__((device,always_inline,flatten)) inline
+int __any(int p) {
+  _NOT_IMPLEMENTED
+}
+__attribute__((device,always_inline,flatten)) inline
+int __all(int p) {
+  _NOT_IMPLEMENTED
+}
+__attribute__((device,always_inline,flatten)) inline
+int __ballot(int p) {
+  _NOT_IMPLEMENTED
+}
+__attribute__((device,always_inline,flatten)) inline
+float __fmul_rz(float a, float b) {
+  _NOT_IMPLEMENTED
+}
+
+
 //extern "C" __attribute__((used,retain,device)) const int __omp_rtl_debug_kind = 0;
 //extern "C" __attribute__((used,retain,device)) const int __omp_rtl_assume_teams_oversubscription = 0;
 //extern "C" __attribute__((used,retain,device)) const int __omp_rtl_assume_threads_oversubscription = 0;

@@ -3,8 +3,6 @@
 
 #include <stddef.h>
 
-#define DEBUGP(...) printf(__VA_ARGS__)
-
 #define __host__ __attribute__((host))
 #define __device__ __attribute__((device))
 #define __global__ __attribute__((global))
@@ -14,9 +12,18 @@
 
 #define __forceinline__ __inline__ __attribute__((always_inline))
 
+extern "C" {
+__device__ int printf(const char *, ...);
+}
+
+#define DEBUGP(...) printf(__VA_ARGS__)
+
 #include "vector_types.h"
 #include "vector_functions.h"
 
+#if 0
+#include "driver_types.h"
+#else
 
 struct CUuuid_st {
   char bytes[16];
@@ -43,5 +50,6 @@ enum cudaMemcpyKind {
   cudaMemcpyDeviceToDevice = 3,
   cudaMemcpyDefault = 4
 };
+#endif
 
 #endif

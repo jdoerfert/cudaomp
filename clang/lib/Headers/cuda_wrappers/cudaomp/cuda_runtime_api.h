@@ -16,7 +16,7 @@
 #endif
 #endif
 
-
+#if 1
 typedef struct cudaDeviceProp {
   char name[256];
   cudaUUID_t uuid;
@@ -93,18 +93,23 @@ typedef struct cudaDeviceProp {
   int directManagedMemAccessFromHost;
   int accessPolicyMaxWindowSize;
 } cudaDeviceProp;
+#endif
 
 //Declarations of global variables
-static cudaError_t lastError = cudaSuccess;
+static cudaError_t __cudaomp_last_error = cudaSuccess;
 static int *kernels = nullptr;
 static std::atomic<unsigned long> num_kernels = {0};
 static std::atomic<unsigned long> synced_kernels = {0};
+
+#if 0
+#pragma omp begin declare variant match(implementation={compiler(llvm)})
+#endif
 
 inline cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
 
   if (device >= omp_get_num_devices()) {
 
-    lastError = cudaErrorInvalidDevice;
+    __cudaomp_last_error = cudaErrorInvalidDevice;
     return cudaErrorInvalidDevice;
   }
   if (device != omp_get_default_device()) {
@@ -114,18 +119,18 @@ inline cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
   // set some of the properties
   strncpy(prop->name, "OpenMP device", 256);
 
-  lastError = cudaSuccess;
+  __cudaomp_last_error = cudaSuccess;
   return cudaSuccess;
 }
 
 // Returns the last error that has been produced and resets it to cudaSuccess
 inline cudaError_t cudaGetLastError() {
-  cudaError_t tempError = lastError;
-  lastError = cudaSuccess;
+  cudaError_t tempError = __cudaomp_last_error;
+  __cudaomp_last_error = cudaSuccess;
   return tempError;
 }
 
-inline cudaError_t cudaPeekAtLastError() { return lastError; }
+inline cudaError_t cudaPeekAtLastError() { return __cudaomp_last_error; }
 
 inline const char *cudaGetErrorString(cudaError_t error) {
   switch (error) {
@@ -148,18 +153,21 @@ inline const char *cudaGetErrorString(cudaError_t error) {
   }
   return nullptr;
 }
+inline const char *cudaGetErrorName(cudaError_t error) {
+  return cudaGetErrorString(error);
+}
 
 // TODO
 inline cudaError_t cudaDeviceSynchronize() {
   //DEBUGP("===> TODO cudaDeviceSynchronize\n");
-  return lastError = cudaSuccess; //cudaError_t(0);
+  return __cudaomp_last_error = cudaSuccess; //cudaError_t(0);
 }
 
 // TODO, fix tgt_kernel_synchronize
 inline cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
   DEBUGP("===> TODO FIX cudaStreamSynchronize\n");
   __tgt_kernel_synchronize(omp_get_default_device(), stream);
-  return lastError = cudaSuccess; //cudaError_t(0);
+  return __cudaomp_last_error = cudaSuccess; //cudaError_t(0);
 }
 
 inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count) {
@@ -169,7 +177,7 @@ inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count) {
     ptr[i] = value;
   }
 
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -179,14 +187,14 @@ inline cudaError_t cudaMemset(T *devPtr, int value, size_t count){
 
 inline cudaError_t __cudaFree(void *devPtr) {
   if (omp_get_num_devices() < 1) {
-    return lastError = cudaErrorNoDevice;
+    return __cudaomp_last_error = cudaErrorNoDevice;
   }
 
   cudaDeviceSynchronize();
 
   omp_target_free(devPtr, omp_get_default_device());
 
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -197,13 +205,13 @@ inline cudaError_t cudaFree(T* ptr){
 inline cudaError_t __cudaMalloc(void **devPtr, size_t size) {
   int num_devices = omp_get_num_devices();
   if (size < 0 || num_devices < 1) {
-    return lastError = cudaErrorInvalidValue;
+    return __cudaomp_last_error = cudaErrorInvalidValue;
   }
   *devPtr = omp_target_alloc(size, omp_get_default_device());
   if (*devPtr == NULL) {
-    return lastError = cudaErrorMemoryAllocation;
+    return __cudaomp_last_error = cudaErrorMemoryAllocation;
   }
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -217,7 +225,7 @@ inline cudaError_t __cudaMemcpy(void *dst, const void *src, size_t count,
   int num_devices = omp_get_num_devices();
 
   if (count < 0 || num_devices < 1) {
-    return lastError = cudaErrorInvalidValue;
+    return __cudaomp_last_error = cudaErrorInvalidValue;
   }
 
   // get the host device number (which is the inital device)
@@ -239,10 +247,10 @@ inline cudaError_t __cudaMemcpy(void *dst, const void *src, size_t count,
   // omp_target_memcpy returns 0 on success and non-zero on failure
   if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
                         src_device_num)) {
-    return lastError = cudaErrorMemoryAllocation;
+    return __cudaomp_last_error = cudaErrorMemoryAllocation;
   }
 
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -257,7 +265,7 @@ inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
   int num_devices = omp_get_num_devices();
 
   if (count < 0 || num_devices < 1) {
-    return lastError = cudaErrorInvalidValue;
+    return __cudaomp_last_error = cudaErrorInvalidValue;
   }
 
   // get the host device number (which is the inital device)
@@ -279,10 +287,10 @@ inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
   // omp_target_memcpy returns 0 on success and non-zero on failure
   if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
                         src_device_num)) {
-    return lastError = cudaErrorMemoryAllocation;
+    return __cudaomp_last_error = cudaErrorMemoryAllocation;
   }
 
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -304,31 +312,31 @@ inline cudaError_t cudaThreadSynchronize() {
     synced_kernels.compare_exchange_strong(kernel_first, kernel_last);
   }
 
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t cudaGetDevice(int *device) {
 
   *device = omp_get_default_device();
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t cudaGetDeviceCount(int *count) {
 
   *count = omp_get_num_devices();
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t cudaSetDevice(int device) {
 
   omp_set_default_device(device);
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 void *llvm_omp_target_alloc_host(size_t size, int device_num);
 inline cudaError_t __cudaMallocHost(void **ptr, size_t size, unsigned int flags){
   *ptr = llvm_omp_target_alloc_host(size, omp_get_default_device());
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -338,7 +346,7 @@ inline cudaError_t cudaMallocHost(T **ptr, size_t size, unsigned int flags = 0){
 
 inline cudaError_t __cudaFreeHost(void *ptr){
   omp_target_free(ptr, omp_get_default_device());
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -348,16 +356,16 @@ inline cudaError_t cudaFreeHost(T* ptr){
 
 inline cudaError_t cudaStreamCreate (cudaStream_t *pStream){
   DEBUGP("===> TODO FIX cudaStreamCreate\n");
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t cudaDeviceReset(void){
   DEBUGP("===> TODO FIX cudaDeviceReset\n");
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t __cudaMemsetAsync(void *devPtr, int value, size_t count, cudaStream_t stream=0){
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 template<class T>
@@ -368,7 +376,11 @@ inline cudaError_t cudaMemsetAsync(T *devPtr, int value, size_t count, cudaStrea
 void *llvm_omp_target_alloc_shared(size_t size, int device_num);
 inline cudaError_t cudaMallocManaged(void **devPtr, size_t size, unsigned int flags __default_val(0)){
   *devPtr = llvm_omp_target_alloc_shared(size, omp_get_default_device());
-  return lastError = cudaSuccess;
+  return __cudaomp_last_error = cudaSuccess;
 }
+
+#if 0
+#pragma omp end declare variant
+#endif
 
 #endif

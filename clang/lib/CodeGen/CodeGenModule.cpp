@@ -800,7 +800,7 @@ void CodeGenModule::Release() {
                                   llvm::DenormalMode::IEEE);
   }
 
-  if (LangOpts.CUDA && LangOpts.CUDAIsDevice&& !getTriple().isNVPTX()) {
+  if (LangOpts.CUDA && LangOpts.CUDAIsDevice) {
     llvm::OpenMPIRBuilder OMPBuilder(getModule());
     OMPBuilder.createGlobalFlag(getLangOpts().OpenMPTargetDebug,
                                 "__omp_rtl_debug_kind");
