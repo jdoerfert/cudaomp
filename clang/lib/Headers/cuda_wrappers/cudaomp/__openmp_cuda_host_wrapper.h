@@ -23,6 +23,7 @@ int __tgt_kernel(int64_t device_id, const void *host_ptr, void **args,
                  int32_t block_dim_x, int32_t block_dim_y, int32_t block_dim_z,
                  size_t shared_mem, void *stream);
 int __tgt_kernel_synchronize(int64_t device_id, void *Stream);
+//int __tgt_device_synchronize(int64_t device_id);
 
 struct __omp_kernel_t {
   dim3 __grid_size;

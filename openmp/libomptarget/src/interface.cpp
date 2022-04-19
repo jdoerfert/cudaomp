@@ -444,7 +444,15 @@ int __tgt_kernel_synchronize(int64_t device_id, void *Stream) {
 
   // TODO: fix, StreamManager.
   DeviceTy &Device = *PM->Devices[device_id];
-  AsyncInfoTy AsyncInfo(Device, Stream);
+  AsyncInfoTy AsyncInfo(Device, Stream, true);
+  return Device.synchronize(AsyncInfo);
+}
+
+int __tgt_device_synchronize(int64_t device_id) {
+  TIMESCOPE();
+  // TODO: fix, StreamManager.
+  DeviceTy &Device = *PM->Devices[device_id];
+  AsyncInfoTy AsyncInfo(Device, nullptr, true);
   return Device.synchronize(AsyncInfo);
 }
 

@@ -148,6 +148,8 @@ inline const char *cudaGetErrorString(cudaError_t error) {
     return "The device ordinal supplied by the user does not correspond to a "
            "valid CUDA device or the action requested is invalid for the "
            "specified device";
+  case cudaErrorOTHER:
+    return "NOT IMPLEMENTED";
   default:
     return "Unrecognized Error Code!";
   }
@@ -157,17 +159,20 @@ inline const char *cudaGetErrorName(cudaError_t error) {
   return cudaGetErrorString(error);
 }
 
-// TODO
-inline cudaError_t cudaDeviceSynchronize() {
-  //DEBUGP("===> TODO cudaDeviceSynchronize\n");
-  return __cudaomp_last_error = cudaSuccess; //cudaError_t(0);
-}
-
 // TODO, fix tgt_kernel_synchronize
 inline cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
-  DEBUGP("===> TODO FIX cudaStreamSynchronize\n");
-  __tgt_kernel_synchronize(omp_get_default_device(), stream);
-  return __cudaomp_last_error = cudaSuccess; //cudaError_t(0);
+  //DEBUGP("===> TODO FIX cudaStreamSynchronize\n");
+  if (__tgt_kernel_synchronize(omp_get_default_device(), stream))
+    return __cudaomp_last_error = cudaErrorOTHER;
+  return __cudaomp_last_error = cudaSuccess;
+}
+
+// TODO
+inline cudaError_t cudaDeviceSynchronize() {
+  return cudaStreamSynchronize(nullptr);
+  //if (__tgt_device_synchronize(omp_get_default_device()))
+    //return __cudaomp_last_error = cudaErrorOTHER;
+  //return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count) {

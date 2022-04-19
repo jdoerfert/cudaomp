@@ -1756,7 +1756,7 @@ int32_t __tgt_rtl_synchronize(int32_t device_id,
                               __tgt_async_info *async_info_ptr) {
   assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
   assert(async_info_ptr && "async_info_ptr is nullptr");
-  assert(async_info_ptr->Queue && "async_info_ptr->Queue is nullptr");
+  assert((async_info_ptr->Queue || async_info_ptr->isUserStream)&& "async_info_ptr->Queue is nullptr");
   // NOTE: We don't need to set context for stream sync.
   return DeviceRTL.synchronize(device_id, async_info_ptr);
 }

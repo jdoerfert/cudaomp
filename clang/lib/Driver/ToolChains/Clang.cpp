@@ -8239,7 +8239,9 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
                 "--cuda-path=" + CudaInstallation.getInstallPath()));
 
         if (D.isUsingLTO(/* IsOffload */ true)) {
-          StringRef Arch = "sm_70";
+          StringRef Arch = Args.getLastArgValue(options::OPT_march_EQ);
+          if (Args.hasArg(options::OPT_offload_arch_EQ))
+            Arch = Args.getLastArgValue(options::OPT_offload_arch_EQ);
           std::string LibDeviceFile = CudaInstallation.getLibDeviceFile(Arch);
           if (!LibDeviceFile.empty())
             CmdArgs.push_back(

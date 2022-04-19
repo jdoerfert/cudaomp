@@ -39,7 +39,8 @@ typedef enum cudaError {
   cudaErrorInvalidValue = 1,
   cudaErrorMemoryAllocation = 2,
   cudaErrorNoDevice = 100,
-  cudaErrorInvalidDevice = 101
+  cudaErrorInvalidDevice = 101,
+  cudaErrorOTHER =-1,
 } cudaError_t;
 
 /// used in cudaMemcpy to specify the copy direction
