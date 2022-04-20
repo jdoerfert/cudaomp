@@ -806,12 +806,14 @@ struct OpenMPOpt {
                       << OMPInfoCache.ModuleSlice.size() << " functions\n");
 
     if (IsModulePass) {
+      #if 0
       if (isOpenMPDevice(M)) {
         for (Function &F : M)
           if (!F.hasLocalLinkage() && !F.isDeclaration())
             if (!isKernel(F))
               F.setLinkage(GlobalValue::InternalLinkage);
       }
+      #endif
       Changed |= runAttributor(IsModulePass);
 
       // Recollect uses, in case Attributor deleted any.
