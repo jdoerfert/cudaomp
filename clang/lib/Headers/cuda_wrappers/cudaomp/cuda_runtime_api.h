@@ -305,19 +305,7 @@ inline cudaError_t cudaMemcpyAsync(T *dst, const T *src, size_t count,
 }
 
 inline cudaError_t cudaThreadSynchronize() {
-  unsigned long kernel_first = synced_kernels;
-  unsigned long kernel_last = num_kernels;
-  if (kernel_first < kernel_last) {
-    for (unsigned long i = kernel_first; i < kernel_last; ++i) {
-#pragma omp parallel
-#pragma omp single
-#pragma omp task depend(in : kernels[i])
-      {}
-    }
-    synced_kernels.compare_exchange_strong(kernel_first, kernel_last);
-  }
-
-  return __cudaomp_last_error = cudaSuccess;
+  return cudaDeviceSynchronize();
 }
 
 inline cudaError_t cudaGetDevice(int *device) {
