@@ -266,6 +266,10 @@ inline cudaError_t cudaMemcpy(T *dst, const T *src, size_t count,
 
 inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
                             cudaMemcpyKind kind, cudaStream_t stream = 0) {
+  if (stream == 0){
+    return __cudaMemcpyAsync(dst, src, count, kind);
+  }
+
   // First , make sure we have at least one nonhost device
   int num_devices = omp_get_num_devices();
 
@@ -326,7 +330,6 @@ inline cudaError_t cudaSetDevice(int device) {
   return __cudaomp_last_error = cudaSuccess;
 }
 
-void *llvm_omp_target_alloc_host(size_t size, int device_num);
 inline cudaError_t __cudaMallocHost(void **ptr, size_t size, unsigned int flags){
   *ptr = llvm_omp_target_alloc_host(size, omp_get_default_device());
   return __cudaomp_last_error = cudaSuccess;
@@ -348,7 +351,14 @@ inline cudaError_t cudaFreeHost(T* ptr){
 }
 
 inline cudaError_t cudaStreamCreate (cudaStream_t *pStream){
-  DEBUGP("===> TODO FIX cudaStreamCreate\n");
+  int num_devices = omp_get_num_devices();
+  int64_t gpu_device_num = omp_get_default_device();
+
+  if (num_devices < 1) {
+    return __cudaomp_last_error = cudaErrorInvalidValue;
+  }
+
+  __tgt_create_stream(gpu_device_num, (void **) pStream);
   return __cudaomp_last_error = cudaSuccess;
 }
 
