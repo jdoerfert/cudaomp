@@ -475,7 +475,7 @@ public:
   CUstream getStream(const int DeviceId, __tgt_async_info *AsyncInfo) const {
     assert(AsyncInfo && "AsyncInfo is nullptr");
 
-    if (!AsyncInfo->Queue) {
+    if (!AsyncInfo->Queue && !AsyncInfo->isUserStream) {
       CUstream S;
       if (StreamPool[DeviceId]->acquire(S) != OFFLOAD_SUCCESS)
         return nullptr;

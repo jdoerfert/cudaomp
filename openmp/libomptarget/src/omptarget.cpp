@@ -22,7 +22,7 @@
 
 int AsyncInfoTy::synchronize() {
   int Result = OFFLOAD_SUCCESS;
-  if (AsyncInfo.Queue) {
+  if (AsyncInfo.Queue || AsyncInfo.isUserStream ) {
     // If we have a queue we need to synchronize it now.
     Result = Device.synchronize(*this);
     assert(AsyncInfo.Queue == nullptr &&

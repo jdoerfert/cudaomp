@@ -124,7 +124,6 @@ inline cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim,
   int rv = __tgt_kernel(omp_get_default_device(), func, args, gridDim.x, gridDim.y,
                gridDim.z, blockDim.x, blockDim.y, blockDim.z, sharedMem,
                stream);
-  __tgt_kernel_synchronize(omp_get_default_device(), stream);
   return cudaError_t(rv);
 }
 

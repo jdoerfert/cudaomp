@@ -387,9 +387,12 @@ static int TargetEntryPoint(ident_t *loc, int64_t device_id, void *host_ptr,
                   true /*team*/, AsyncInfo, SharedMem, GridDimY, GridDimZ,
                   BlockDimY, BlockDimZ, IsNonOpenMPKernel);
 
-  if (!IsNonOpenMPKernel) {
-    if (rc == OFFLOAD_SUCCESS)
+  if (!IsNonOpenMPKernel || !Stream) {
+    printf("HERE I AM TRYING TO SYNCRHONIZE\n");
+    if (rc == OFFLOAD_SUCCESS){
+      printf("I SYNCRHONIZE\n");
       rc = AsyncInfo.synchronize();
+    }
   }
 
   handleTargetOutcome(rc == OFFLOAD_SUCCESS, loc);
