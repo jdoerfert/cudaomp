@@ -452,8 +452,7 @@ int __tgt_device_synchronize(int64_t device_id) {
   TIMESCOPE();
   // TODO: fix, StreamManager.
   DeviceTy &Device = *PM->Devices[device_id];
-  AsyncInfoTy AsyncInfo(Device, nullptr, true);
-  return Device.synchronize(AsyncInfo);
+  return Device.synchronize_all();
 }
 
 // Get the current number of components for a user-defined mapper.

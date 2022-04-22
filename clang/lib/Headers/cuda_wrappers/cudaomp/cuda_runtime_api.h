@@ -169,10 +169,10 @@ inline cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
 
 // TODO
 inline cudaError_t cudaDeviceSynchronize() {
-  return cudaStreamSynchronize(nullptr);
-  //if (__tgt_device_synchronize(omp_get_default_device()))
-    //return __cudaomp_last_error = cudaErrorOTHER;
-  //return __cudaomp_last_error = cudaSuccess;
+  //return cudaStreamSynchronize(nullptr);
+  if (__tgt_device_synchronize(omp_get_default_device()))
+    return __cudaomp_last_error = cudaErrorOTHER;
+  return __cudaomp_last_error = cudaSuccess;
 }
 
 inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count) {

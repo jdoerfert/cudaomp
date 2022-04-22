@@ -1269,6 +1269,14 @@ public:
     }
     return (Err == CUDA_SUCCESS) ? OFFLOAD_SUCCESS : OFFLOAD_FAIL;
   }
+  int synchronize_all(const int DeviceId) const {
+    CUresult Err = cuCtxSynchronize();
+    if (Err != CUDA_SUCCESS) {
+      DP("Error when synchronizing context.");
+      CUDA_ERR_STRING(Err);
+    }
+    return (Err == CUDA_SUCCESS) ? OFFLOAD_SUCCESS : OFFLOAD_FAIL;
+  }
 
   void printDeviceInfo(int32_t device_id) {
     char TmpChar[1000];
@@ -1759,6 +1767,11 @@ int32_t __tgt_rtl_synchronize(int32_t device_id,
   assert((async_info_ptr->Queue || async_info_ptr->isUserStream)&& "async_info_ptr->Queue is nullptr");
   // NOTE: We don't need to set context for stream sync.
   return DeviceRTL.synchronize(device_id, async_info_ptr);
+}
+int32_t __tgt_rtl_synchronize_all(int32_t device_id) {
+  assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
+  // NOTE: We don't need to set context for stream sync.
+  return DeviceRTL.synchronize_all(device_id);
 }
 
 void __tgt_rtl_set_info_flag(uint32_t NewInfoLevel) {
