@@ -56,6 +56,8 @@ VERS1.0 {
     __tgt_interop_init;
     __tgt_interop_use;
     __tgt_interop_destroy;
+    __tgt_create_stream;
+    omp_target_memcpy_async_2;
   local:
     *;
 };

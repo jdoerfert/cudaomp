@@ -153,6 +153,7 @@ struct __tgt_async_info {
   // is CUstream.
   void *Queue = nullptr;
   bool isUserStream = false;
+  const char *tmp = "dinos";
 };
 
 struct DeviceTy;
@@ -173,7 +174,13 @@ public:
       : Device(Device), AsyncInfo{Stream, userStream} {}
 // TODO: This de-constructor seams a little out of context for pure-cuda/hip execution.
 // We should not syncrhonize every time we exit the omp-scope.
-  ~AsyncInfoTy() { synchronize(); }
+  ~AsyncInfoTy() {
+    // User Streams are explicitly synced by the application.
+    // And the internal AsyncInfo will be de-allocated
+    // by the developer.
+    if (! AsyncInfo.isUserStream )
+      synchronize();
+  }
 
   /// Implicit conversion to the __tgt_async_info which is used in the
   /// plugin interface.
@@ -187,6 +194,10 @@ public:
   /// Return a void* reference with a lifetime that is at least as long as this
   /// AsyncInfoTy object. The location can be used as intermediate buffer.
   void *&getVoidPtrLocation();
+
+  void setQueue(void *q){
+    AsyncInfo.Queue = q;
+  }
 };
 
 /// This struct is a record of non-contiguous information
@@ -213,6 +224,7 @@ int omp_target_is_present(const void *ptr, int device_num);
 int omp_target_memcpy(void *dst, const void *src, size_t length,
                       size_t dst_offset, size_t src_offset, int dst_device,
                       int src_device);
+
 int omp_target_memcpy_stream(void *dst, const void *src, size_t length,
                       size_t dst_offset, size_t src_offset, int dst_device,
                       int src_device, void *stream);
@@ -361,6 +373,8 @@ int __tgt_kernel(int64_t device_id, const void *host_ptr, void **args,
 
 int __tgt_kernel_synchronize(int64_t device_id, void *Stream);
 int __tgt_device_synchronize(int64_t device_id);
+
+void __tgt_create_stream(int64_t device_id, void **stream);
 
 int __tgt_target_teams_nowait_mapper(
     ident_t *loc, int64_t device_id, void *host_ptr, int32_t arg_num,
