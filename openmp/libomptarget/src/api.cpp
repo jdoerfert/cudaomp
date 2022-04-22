@@ -18,6 +18,7 @@
 #include <climits>
 #include <cstdlib>
 #include <cstring>
+#include <omp.h>
 
 EXTERN int omp_get_num_devices(void) {
   TIMESCOPE();
@@ -123,15 +124,15 @@ EXTERN int omp_target_is_present(const void *ptr, int device_num) {
   return rc;
 }
 
-EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
+static int __omp_target_memcpy(void *dst, const void *src, size_t length,
                              size_t dst_offset, size_t src_offset,
-                             int dst_device, int src_device) {
+                             int dst_device, int src_device, void *stream, bool isUserStream) {
   TIMESCOPE();
   DP("Call to omp_target_memcpy, dst device %d, src device %d, "
      "dst addr " DPxMOD ", src addr " DPxMOD ", dst offset %zu, "
-     "src offset %zu, length %zu\n",
+     "src offset %zu, length %zu, stream " DPxMOD "\n",
      dst_device, src_device, DPxPTR(dst), DPxPTR(src), dst_offset, src_offset,
-     length);
+     length, DPxPTR(stream));
 
   if (!dst || !src || length <= 0) {
     if (length == 0) {
@@ -166,12 +167,12 @@ EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
   } else if (src_device == omp_get_initial_device()) {
     DP("copy from host to device\n");
     DeviceTy &DstDev = *PM->Devices[dst_device];
-    AsyncInfoTy AsyncInfo(DstDev);
+    AsyncInfoTy AsyncInfo(DstDev, stream, isUserStream);
     rc = DstDev.submitData(dstAddr, srcAddr, length, AsyncInfo);
   } else if (dst_device == omp_get_initial_device()) {
     DP("copy from device to host\n");
     DeviceTy &SrcDev = *PM->Devices[src_device];
-    AsyncInfoTy AsyncInfo(SrcDev);
+    AsyncInfoTy AsyncInfo(SrcDev, stream, isUserStream);
     rc = SrcDev.retrieveData(dstAddr, srcAddr, length, AsyncInfo);
   } else {
     DP("copy from device to device\n");
@@ -180,7 +181,7 @@ EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
     // First try to use D2D memcpy which is more efficient. If fails, fall back
     // to unefficient way.
     if (SrcDev.isDataExchangable(DstDev)) {
-      AsyncInfoTy AsyncInfo(SrcDev);
+      AsyncInfoTy AsyncInfo(SrcDev, stream, isUserStream);
       rc = SrcDev.dataExchange(srcAddr, DstDev, dstAddr, length, AsyncInfo);
       if (rc == OFFLOAD_SUCCESS)
         return OFFLOAD_SUCCESS;
@@ -188,11 +189,11 @@ EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
 
     void *buffer = malloc(length);
     {
-      AsyncInfoTy AsyncInfo(SrcDev);
+      AsyncInfoTy AsyncInfo(SrcDev, stream, isUserStream);
       rc = SrcDev.retrieveData(buffer, srcAddr, length, AsyncInfo);
     }
     if (rc == OFFLOAD_SUCCESS) {
-      AsyncInfoTy AsyncInfo(SrcDev);
+      AsyncInfoTy AsyncInfo(SrcDev, stream, isUserStream);
       rc = DstDev.submitData(dstAddr, buffer, length, AsyncInfo);
     }
     free(buffer);
@@ -200,6 +201,16 @@ EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
 
   DP("omp_target_memcpy returns %d\n", rc);
   return rc;
+}
+EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
+                             size_t dst_offset, size_t src_offset,
+                             int dst_device, int src_device) {
+  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_deviceA, nullptr, false);
+}
+EXTERN int omp_target_memcpy_stream(void *dst, const void *src, size_t length,
+                             size_t dst_offset, size_t src_offset,
+                             int dst_device, int src_device, void *stream) {
+  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_deviceA, stream, true);
 }
 
 EXTERN int omp_target_memcpy_rect(

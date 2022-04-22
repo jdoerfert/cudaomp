@@ -250,8 +250,8 @@ inline cudaError_t __cudaMemcpy(void *dst, const void *src, size_t count,
   }
 
   // omp_target_memcpy returns 0 on success and non-zero on failure
-  if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
-                        src_device_num)) {
+  if (omp_target_memcpy_stream(dst, src, count, 0, 0, dst_device_num,
+                        src_device_num, nullptr)) {
     return __cudaomp_last_error = cudaErrorMemoryAllocation;
   }
 
@@ -290,8 +290,8 @@ inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
   }
 
   // omp_target_memcpy returns 0 on success and non-zero on failure
-  if (omp_target_memcpy(dst, src, count, 0, 0, dst_device_num,
-                        src_device_num)) {
+  if (omp_target_memcpy_stream(dst, src, count, 0, 0, dst_device_num,
+                        src_device_num, stream)) {
     return __cudaomp_last_error = cudaErrorMemoryAllocation;
   }
 

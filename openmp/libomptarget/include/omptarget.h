@@ -213,6 +213,9 @@ int omp_target_is_present(const void *ptr, int device_num);
 int omp_target_memcpy(void *dst, const void *src, size_t length,
                       size_t dst_offset, size_t src_offset, int dst_device,
                       int src_device);
+int omp_target_memcpy_stream(void *dst, const void *src, size_t length,
+                      size_t dst_offset, size_t src_offset, int dst_device,
+                      int src_device, void *stream);
 int omp_target_memcpy_rect(void *dst, const void *src, size_t element_size,
                            int num_dims, const size_t *volume,
                            const size_t *dst_offsets, const size_t *src_offsets,
