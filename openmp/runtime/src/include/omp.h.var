@@ -146,9 +146,6 @@
     extern int   __KAI_KMPC_CONVENTION  omp_target_memcpy_stream(void *, const void *, size_t, size_t, size_t, int, int, void*);
     extern int   __KAI_KMPC_CONVENTION  omp_target_memcpy_rect(void *, const void *, size_t, int, const size_t *,
                                             const size_t *, const size_t *, const size_t *, const size_t *, int, int);
-    extern int   __KAI_KMPC_CONVENTION  omp_target_memcpy_async_2(void *dst, const void *src, size_t length,
-                                                                  size_t dst_offset, size_t src_offset, int dst_device,
-                                                                  int src_device, void *stream);
     extern int   __KAI_KMPC_CONVENTION  omp_target_associate_ptr(const void *, const void *, size_t, size_t, int);
     extern int   __KAI_KMPC_CONVENTION  omp_target_disassociate_ptr(const void *, int);
 
