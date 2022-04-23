@@ -167,6 +167,13 @@ inline cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
   return __cudaomp_last_error = cudaSuccess;
 }
 
+inline cudaError_t cudaStreamDestroy (cudaStream_t stream) {
+  if (__tgt_destroy_stream(omp_get_default_device(), (void *) stream))
+    return __cudaomp_last_error = cudaErrorOTHER;
+  return __cudaomp_last_error = cudaSuccess;
+}
+
+
 // TODO
 inline cudaError_t cudaDeviceSynchronize() {
   //return cudaStreamSynchronize(nullptr);

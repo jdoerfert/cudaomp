@@ -25,7 +25,8 @@ int __tgt_kernel(int64_t device_id, const void *host_ptr, void **args,
 int __tgt_kernel_synchronize(int64_t device_id, void *Stream);
 void __tgt_create_stream(int64_t device_id, void **stream);
 void *llvm_omp_target_alloc_host(size_t size, int device_num);
-//int __tgt_device_synchronize(int64_t device_id);
+int __tgt_device_synchronize(int64_t device_id);
+int __tgt_destroy_stream(int64_t device_id, void *stream);
 
 struct __omp_kernel_t {
   dim3 __grid_size;

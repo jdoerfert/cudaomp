@@ -99,6 +99,17 @@ EXTERN void __tgt_create_stream(int64_t device_id, void **stream){
   return;
 }
 
+EXTERN int __tgt_destroy_stream(int64_t device_id, void *stream){
+  DeviceTy &Device = *PM->Devices[device_id];
+  if ( Device.RTL->release_async_info){
+    AsyncInfoTy AsyncInfo(Device, stream, true);
+    Device.synchronize(AsyncInfo);
+    return Device.RTL->release_async_info(device_id, &(*AsyncInfo));
+  }
+  return 0;
+}
+
+
 EXTERN void __tgt_target_data_begin_mapper(ident_t *loc, int64_t device_id,
                                            int32_t arg_num, void **args_base,
                                            void **args, int64_t *arg_sizes,

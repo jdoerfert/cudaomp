@@ -18,7 +18,6 @@
 #include <climits>
 #include <cstdlib>
 #include <cstring>
-#include <omp.h>
 
 EXTERN int omp_get_num_devices(void) {
   TIMESCOPE();
@@ -206,12 +205,12 @@ static int __omp_target_memcpy(void *dst, const void *src, size_t length,
 EXTERN int omp_target_memcpy(void *dst, const void *src, size_t length,
                              size_t dst_offset, size_t src_offset,
                              int dst_device, int src_device) {
-  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_deviceA, nullptr, false);
+  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_device, nullptr, false);
 }
 EXTERN int omp_target_memcpy_stream(void *dst, const void *src, size_t length,
                              size_t dst_offset, size_t src_offset,
                              int dst_device, int src_device, void *stream) {
-  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_deviceA, stream, true);
+  return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_device, stream, true);
 }
 
 EXTERN int omp_target_memcpy_rect(
