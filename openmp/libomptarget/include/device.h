@@ -438,6 +438,7 @@ struct DeviceTy {
   /// Synchronize device/queue/event based on \p AsyncInfo and return
   /// OFFLOAD_SUCCESS/OFFLOAD_FAIL when succeeds/fails.
   int32_t synchronize(AsyncInfoTy &AsyncInfo);
+  int32_t synchronize_all();
 
   /// Calls the corresponding print in the \p RTLDEVID
   /// device RTL to obtain the information of the specific device.

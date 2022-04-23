@@ -650,6 +650,11 @@ int32_t DeviceTy::synchronize(AsyncInfoTy &AsyncInfo) {
     return RTL->synchronize(RTLDeviceID, AsyncInfo);
   return OFFLOAD_SUCCESS;
 }
+int32_t DeviceTy::synchronize_all() {
+  if (RTL->synchronize_all)
+    return RTL->synchronize_all(RTLDeviceID);
+  return OFFLOAD_SUCCESS;
+}
 
 int32_t DeviceTy::createEvent(void **Event) {
   if (RTL->create_event)

@@ -180,6 +180,7 @@ void RTLsTy::LoadRTLs() {
     *((void **)&R.run_kernel_async) =
         dlsym(dynlib_handle, "__tgt_rtl_run_kernel_async");
     *((void **)&R.synchronize) = dlsym(dynlib_handle, "__tgt_rtl_synchronize");
+    *((void **)&R.synchronize_all) = dlsym(dynlib_handle, "__tgt_rtl_synchronize_all");
     *((void **)&R.data_exchange) =
         dlsym(dynlib_handle, "__tgt_rtl_data_exchange");
     *((void **)&R.data_exchange_async) =

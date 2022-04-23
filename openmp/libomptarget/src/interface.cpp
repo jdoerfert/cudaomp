@@ -87,6 +87,29 @@ EXTERN void __tgt_target_data_begin_nowait(int64_t device_id, int32_t arg_num,
                                  arg_sizes, arg_types, nullptr, nullptr);
 }
 
+EXTERN void __tgt_create_stream(int64_t device_id, void **stream){
+  DeviceTy &Device = *PM->Devices[device_id];
+  *stream = nullptr;
+  if ( Device.RTL->init_async_info ){
+    struct __tgt_async_info *user_stream;// = (struct __tgt_async_info*) malloc (sizeof(struct __tgt_async_info));
+//    user_stream->Queue = nullptr;
+    Device.RTL->init_async_info(device_id, &user_stream);
+    *stream = user_stream->Queue;
+  }
+  return;
+}
+
+EXTERN int __tgt_destroy_stream(int64_t device_id, void *stream){
+  DeviceTy &Device = *PM->Devices[device_id];
+  if ( Device.RTL->release_async_info){
+    AsyncInfoTy AsyncInfo(Device, stream, true);
+    Device.synchronize(AsyncInfo);
+    return Device.RTL->release_async_info(device_id, &(*AsyncInfo));
+  }
+  return 0;
+}
+
+
 EXTERN void __tgt_target_data_begin_mapper(ident_t *loc, int64_t device_id,
                                            int32_t arg_num, void **args_base,
                                            void **args, int64_t *arg_sizes,
@@ -382,6 +405,7 @@ static int TargetEntryPoint(ident_t *loc, int64_t device_id, void *host_ptr,
 
   DeviceTy &Device = *PM->Devices[device_id];
   AsyncInfoTy AsyncInfo(Device, Stream, IsNonOpenMPKernel);
+
   int rc = target(loc, Device, host_ptr, arg_num, args_base, args, arg_sizes,
                   arg_types, arg_names, arg_mappers, team_num, thread_limit,
                   true /*team*/, AsyncInfo, SharedMem, GridDimY, GridDimZ,
@@ -452,8 +476,7 @@ int __tgt_device_synchronize(int64_t device_id) {
   TIMESCOPE();
   // TODO: fix, StreamManager.
   DeviceTy &Device = *PM->Devices[device_id];
-  AsyncInfoTy AsyncInfo(Device, nullptr, true);
-  return Device.synchronize(AsyncInfo);
+  return Device.synchronize_all();
 }
 
 // Get the current number of components for a user-defined mapper.

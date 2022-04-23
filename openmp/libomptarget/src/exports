@@ -28,6 +28,7 @@ VERS1.0 {
     __tgt_push_mapper_component;
     __tgt_kernel;
     __tgt_kernel_synchronize;
+    __tgt_device_synchronize;
     __kmpc_push_target_tripcount;
     __kmpc_push_target_tripcount_mapper;
     omp_get_num_devices;
@@ -55,6 +56,8 @@ VERS1.0 {
     __tgt_interop_init;
     __tgt_interop_use;
     __tgt_interop_destroy;
+    __tgt_destroy_stream;
+    __tgt_create_stream;
   local:
     *;
 };

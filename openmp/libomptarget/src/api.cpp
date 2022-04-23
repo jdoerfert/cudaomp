@@ -125,7 +125,8 @@ EXTERN int omp_target_is_present(const void *ptr, int device_num) {
 
 static int __omp_target_memcpy(void *dst, const void *src, size_t length,
                              size_t dst_offset, size_t src_offset,
-                             int dst_device, int src_device, void *stream, bool isUserStream) {
+                             int dst_device, int src_device, void *stream,
+                             bool isUserStream) {
   TIMESCOPE();
   DP("Call to omp_target_memcpy, dst device %d, src device %d, "
      "dst addr " DPxMOD ", src addr " DPxMOD ", dst offset %zu, "

@@ -240,6 +240,7 @@ CUresult cuModuleUnload(CUmodule);
 CUresult cuStreamCreate(CUstream *, unsigned);
 CUresult cuStreamDestroy(CUstream);
 CUresult cuStreamSynchronize(CUstream);
+CUresult cuCtxSynchronize(void);
 CUresult cuCtxSetCurrent(CUcontext);
 CUresult cuDevicePrimaryCtxRelease(CUdevice);
 CUresult cuDevicePrimaryCtxGetState(CUdevice, unsigned *, int *);
