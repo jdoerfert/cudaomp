@@ -548,6 +548,11 @@ int32_t DeviceTy::submitData(void *TgtPtrBegin, void *HstPtrBegin, int64_t Size,
     return RTL->data_submit_async(RTLDeviceID, TgtPtrBegin, HstPtrBegin, Size,
                                   AsyncInfo);
 }
+int32_t DeviceTy::memset(void *TgtPtr, int Value, int64_t Size,
+                    AsyncInfoTy &AsyncInfo) {
+  return RTL->data_memset_async(RTLDeviceID, TgtPtr, Value, Size,
+                                AsyncInfo);
+}
 
 // Retrieve data from device
 int32_t DeviceTy::retrieveData(void *HstPtrBegin, void *TgtPtrBegin,

@@ -171,6 +171,8 @@ void RTLsTy::LoadRTLs() {
         dlsym(dynlib_handle, "__tgt_rtl_init_requires");
     *((void **)&R.data_submit_async) =
         dlsym(dynlib_handle, "__tgt_rtl_data_submit_async");
+    *((void **)&R.data_memset_async) =
+        dlsym(dynlib_handle, "__tgt_rtl_data_memset_async");
     *((void **)&R.data_retrieve_async) =
         dlsym(dynlib_handle, "__tgt_rtl_data_retrieve_async");
     *((void **)&R.run_region_async) =

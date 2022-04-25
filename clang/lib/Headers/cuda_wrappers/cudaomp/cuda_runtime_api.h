@@ -182,12 +182,9 @@ inline cudaError_t cudaDeviceSynchronize() {
   return __cudaomp_last_error = cudaSuccess;
 }
 
-inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count) {
-  unsigned char *ptr = (unsigned char*) devPtr;
-#pragma omp target teams distribute parallel for is_device_ptr(ptr)
-  for (int i = 0; i < count; ++i) {
-    ptr[i] = value;
-  }
+inline cudaError_t __cudaMemset(void *devPtr, int value, size_t count, cudaStream_t stream = 0) {
+  if (omp_target_memset_stream(devPtr, value, count, omp_get_default_device(), stream))
+    return __cudaomp_last_error = cudaErrorMemoryAllocation;
 
   return __cudaomp_last_error = cudaSuccess;
 }

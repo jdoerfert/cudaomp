@@ -540,6 +540,10 @@ public:
                                          int32_t deviceId) {
     return freesignalpool_memcpy(dest, src, size, impl_memcpy_h2d, deviceId);
   }
+  hsa_status_t freesignalpool_memset(void *dest, int32_t value, size_t size,
+                                         int32_t deviceId) {
+    return hsa_amd_memory_fill(dest, value, size);
+  }
 
   // Record entry point associated with device
   void addOffloadEntry(int32_t device_id, __tgt_offload_entry entry) {
@@ -897,6 +901,25 @@ int32_t dataSubmit(int32_t DeviceId, void *TgtPtr, void *HstPtr, int64_t Size,
     DP("Error when copying data from host to device. Pointers: "
        "host = 0x%016lx, device = 0x%016lx, size = %lld\n",
        (Elf64_Addr)HstPtr, (Elf64_Addr)TgtPtr, (unsigned long long)Size);
+    return OFFLOAD_FAIL;
+  }
+  return OFFLOAD_SUCCESS;
+}
+int32_t dataMemset(int32_t DeviceId, void *TgtPtr, int32_t Value, int64_t Size,
+                   __tgt_async_info *AsyncInfo) {
+  assert(AsyncInfo && "AsyncInfo is nullptr");
+  hsa_status_t err;
+  assert(DeviceId < DeviceInfo.NumberOfDevices && "Device ID too large");
+  // Return success if we are not doing host to target.
+  if (!HstPtr)
+    return OFFLOAD_SUCCESS;
+
+  err = DeviceInfo.freesignalpool_memset(TgtPtr, Value, (size_t)Size,
+                                             DeviceId);
+  if (err != HSA_STATUS_SUCCESS) {
+    DP("Error when setting data on device. Pointers: "
+       "device = 0x%016lx, size = %lld\n",
+       (Elf64_Addr)TgtPtr, (unsigned long long)Size);
     return OFFLOAD_FAIL;
   }
   return OFFLOAD_SUCCESS;
@@ -2246,6 +2269,13 @@ int32_t __tgt_rtl_data_submit_async(int device_id, void *tgt_ptr, void *hst_ptr,
   } else {
     return __tgt_rtl_data_submit(device_id, tgt_ptr, hst_ptr, size);
   }
+}
+
+int32_t __tgt_rtl_data_memset_async(int device_id, void *tgt_ptr, int32_t Value,
+                                    int64_t size, __tgt_async_info *AsyncInfo) {
+  assert(device_id < DeviceInfo.NumberOfDevices && "Device ID too large");
+  initAsyncInfo(AsyncInfo);
+  return dataMemset(device_id, tgt_ptr, Value, size, AsyncInfo);
 }
 
 int32_t __tgt_rtl_data_retrieve(int device_id, void *hst_ptr, void *tgt_ptr,

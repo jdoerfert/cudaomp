@@ -212,6 +212,17 @@ EXTERN int omp_target_memcpy_stream(void *dst, const void *src, size_t length,
                              int dst_device, int src_device, void *stream) {
   return __omp_target_memcpy(dst, src, length, dst_offset, src_offset, dst_device, src_device, stream, true);
 }
+EXTERN int omp_target_memset_stream(void *dst, int value, size_t length,
+                             int dst_device, void *stream) {
+  if (dst_device != omp_get_initial_device() && !device_is_ready(dst_device)) {
+    REPORT("omp_target_memset returns OFFLOAD_FAIL\n");
+    return OFFLOAD_FAIL;
+  }
+  DeviceTy &DstDev = *PM->Devices[dst_device];
+  AsyncInfoTy AsyncInfo(DstDev, stream, /* isUserStream */ true);
+  int rc = DstDev.memset(dst, value, length, AsyncInfo);
+  return rc;
+}
 
 EXTERN int omp_target_memcpy_rect(
     void *dst, const void *src, size_t element_size, int num_dims,

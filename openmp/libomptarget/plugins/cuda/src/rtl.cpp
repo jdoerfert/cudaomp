@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cuda.h>
 #include <list>
 #include <memory>
@@ -1001,6 +1002,23 @@ public:
     return OFFLOAD_SUCCESS;
   }
 
+  int dataMemset(const int DeviceId, const void *TgtPtr, int32_t Value,
+                 const int64_t Size, __tgt_async_info *AsyncInfo) const {
+    assert(AsyncInfo && "AsyncInfo is nullptr");
+
+    CUstream Stream = getStream(DeviceId, AsyncInfo);
+    CUresult Err = cuMemsetAsync((CUdeviceptr)TgtPtr, Value, Size, Stream);
+    if (Err != CUDA_SUCCESS) {
+      DP("Error when setting data on device. Pointers: host "
+         "= " DPxMOD ", size = %" PRId64 "\n",
+         DPxPTR(TgtPtr), Size);
+      CUDA_ERR_STRING(Err);
+      return OFFLOAD_FAIL;
+    }
+
+    return OFFLOAD_SUCCESS;
+  }
+
   int dataRetrieve(const int DeviceId, void *HstPtr, const void *TgtPtr,
                    const int64_t Size, __tgt_async_info *AsyncInfo) const {
     assert(AsyncInfo && "AsyncInfo is nullptr");
@@ -1616,6 +1634,19 @@ int32_t __tgt_rtl_data_submit_async(int32_t device_id, void *tgt_ptr,
     return OFFLOAD_FAIL;
 
   return DeviceRTL.dataSubmit(device_id, tgt_ptr, hst_ptr, size,
+                              async_info_ptr);
+}
+
+int32_t __tgt_rtl_data_memset_async(int32_t device_id, void *tgt_ptr,
+                                    int32_t Value, int64_t size,
+                                    __tgt_async_info *async_info_ptr) {
+  assert(DeviceRTL.isValidDeviceId(device_id) && "device_id is invalid");
+  assert(async_info_ptr && "async_info_ptr is nullptr");
+
+  if (DeviceRTL.setContext(device_id) != OFFLOAD_SUCCESS)
+    return OFFLOAD_FAIL;
+
+  return DeviceRTL.dataMemset(device_id, tgt_ptr, Value, size,
                               async_info_ptr);
 }
 

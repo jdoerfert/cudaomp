@@ -35,6 +35,8 @@ struct RTLInfoTy {
   typedef int32_t(data_submit_ty)(int32_t, void *, void *, int64_t);
   typedef int32_t(data_submit_async_ty)(int32_t, void *, void *, int64_t,
                                         __tgt_async_info *);
+  typedef int32_t(data_memset_async_ty)(int32_t, void *, int32_t, int64_t,
+                                        __tgt_async_info *);
   typedef int32_t(data_retrieve_ty)(int32_t, void *, void *, int64_t);
   typedef int32_t(data_retrieve_async_ty)(int32_t, void *, void *, int64_t,
                                           __tgt_async_info *);
@@ -97,6 +99,7 @@ struct RTLInfoTy {
   data_alloc_ty *data_alloc = nullptr;
   data_submit_ty *data_submit = nullptr;
   data_submit_async_ty *data_submit_async = nullptr;
+  data_memset_async_ty *data_memset_async = nullptr;
   data_retrieve_ty *data_retrieve = nullptr;
   data_retrieve_async_ty *data_retrieve_async = nullptr;
   data_exchange_ty *data_exchange = nullptr;

@@ -10,6 +10,7 @@ VERS1.0 {
     __tgt_rtl_data_alloc;
     __tgt_rtl_data_submit;
     __tgt_rtl_data_submit_async;
+    __tgt_rtl_data_memset_async;
     __tgt_rtl_data_retrieve;
     __tgt_rtl_data_retrieve_async;
     __tgt_rtl_data_exchange;

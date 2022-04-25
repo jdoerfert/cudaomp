@@ -417,6 +417,8 @@ struct DeviceTy {
   // Copy data from host to device
   int32_t submitData(void *TgtPtrBegin, void *HstPtrBegin, int64_t Size,
                      AsyncInfoTy &AsyncInfo);
+  int32_t memset(void *TgtPtr, int Value, int64_t Size,
+                     AsyncInfoTy &AsyncInfo);
   // Copy data from device back to host
   int32_t retrieveData(void *HstPtrBegin, void *TgtPtrBegin, int64_t Size,
                        AsyncInfoTy &AsyncInfo);
