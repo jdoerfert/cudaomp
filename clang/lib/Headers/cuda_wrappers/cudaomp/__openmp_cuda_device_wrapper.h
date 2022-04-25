@@ -44,9 +44,11 @@ _NVVM_GETTER(z)
   DEBUGP("===> TODO FIX %s\n", __PRETTY_FUNCTION__); \
   __builtin_trap();
 
+__device__ void syncThreadsAlignedCudaOmp();
+
 __attribute__((device,always_inline,flatten)) inline
 void __syncthreads() {
-  _NOT_IMPLEMENTED
+ syncThreadsAlignedCudaOmp();
 }
 __attribute__((device,always_inline,flatten)) inline
 int __syncthreads_and(int p) {

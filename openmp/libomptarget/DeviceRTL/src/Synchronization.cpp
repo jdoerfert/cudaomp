@@ -405,6 +405,9 @@ void omp_set_lock(omp_lock_t *Lock) { impl::setLock(Lock); }
 void omp_unset_lock(omp_lock_t *Lock) { impl::unsetLock(Lock); }
 
 int omp_test_lock(omp_lock_t *Lock) { return impl::testLock(Lock); }
+
+void syncThreadsAlignedCudaOmp() { impl::syncThreadsAligned(); }
+
 } // extern "C"
 
 #pragma omp end declare target
