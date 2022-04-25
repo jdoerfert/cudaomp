@@ -23,6 +23,8 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "interop_hsa.h"
 #include "impl_runtime.h"
@@ -2234,14 +2236,14 @@ __tgt_target_table *__tgt_rtl_load_binary_locked(int32_t device_id,
 void *__tgt_rtl_data_alloc(int device_id, int64_t size, void *, int32_t kind) {
   void *ptr = NULL;
   assert(device_id < DeviceInfo.NumberOfDevices && "Device ID too large");
+  hsa_amd_memory_pool_t MemoryPool = DeviceInfo.getDeviceMemoryPool(device_id);
 
   if (kind != TARGET_ALLOC_DEFAULT) {
-    REPORT("Invalid target data allocation kind or requested allocator not "
-           "implemented yet\n");
-    return NULL;
+    void *ptr = malloc(size);
+    hsa_amd_memory_lock(ptr, size, &DeviceInfo.CPUAgents[0], DeviceInfo.CPUAgents.size(), &ptr); 
+    return ptr;
   }
 
-  hsa_amd_memory_pool_t MemoryPool = DeviceInfo.getDeviceMemoryPool(device_id);
   hsa_status_t err = hsa_amd_memory_pool_allocate(MemoryPool, size, 0, &ptr);
   DP("Tgt alloc data %ld bytes, (tgt:%016llx).\n", size,
      (long long unsigned)(Elf64_Addr)ptr);
