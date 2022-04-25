@@ -276,10 +276,6 @@ inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
   // First , make sure we have at least one nonhost device
   int num_devices = omp_get_num_devices();
 
-  if (count < 0 || num_devices < 1) {
-    return __cudaomp_last_error = cudaErrorInvalidValue;
-  }
-
   // get the host device number (which is the inital device)
   int host_device_num = omp_get_initial_device();
 
