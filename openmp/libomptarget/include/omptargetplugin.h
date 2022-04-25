@@ -81,7 +81,7 @@ int32_t __tgt_rtl_data_submit(int32_t ID, void *TargetPtr, void *HostPtr,
 
 int32_t __tgt_rtl_data_submit_async(int32_t ID, void *TargetPtr, void *HostPtr,
                                     int64_t Size, __tgt_async_info *AsyncInfo);
-int32_t __tgt_rtl_data_memset_async(int32_t ID, void *TargetPtr, int32_t Value,
+int32_t __tgt_rtl_data_memset_async(int32_t ID, void *TargetPtr, uint8_t Value,
                                     int64_t Size, __tgt_async_info *AsyncInfo);
 
 // Retrieve the data content from the target device using its address. In case

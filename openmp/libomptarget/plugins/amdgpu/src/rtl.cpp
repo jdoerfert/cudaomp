@@ -540,7 +540,7 @@ public:
                                          int32_t deviceId) {
     return freesignalpool_memcpy(dest, src, size, impl_memcpy_h2d, deviceId);
   }
-  hsa_status_t freesignalpool_memset(void *dest, int32_t value, size_t size,
+  hsa_status_t freesignalpool_memset(void *dest, uint8_t value, size_t size,
                                          int32_t deviceId) {
     return hsa_amd_memory_fill(dest, value, size);
   }
@@ -911,7 +911,7 @@ int32_t dataMemset(int32_t DeviceId, void *TgtPtr, int32_t Value, int64_t Size,
   hsa_status_t err;
   assert(DeviceId < DeviceInfo.NumberOfDevices && "Device ID too large");
   // Return success if we are not doing host to target.
-  if (!HstPtr)
+  if (!TgtPtr)
     return OFFLOAD_SUCCESS;
 
   err = DeviceInfo.freesignalpool_memset(TgtPtr, Value, (size_t)Size,
@@ -2271,7 +2271,7 @@ int32_t __tgt_rtl_data_submit_async(int device_id, void *tgt_ptr, void *hst_ptr,
   }
 }
 
-int32_t __tgt_rtl_data_memset_async(int device_id, void *tgt_ptr, int32_t Value,
+int32_t __tgt_rtl_data_memset_async(int device_id, void *tgt_ptr, uint8_t Value,
                                     int64_t size, __tgt_async_info *AsyncInfo) {
   assert(device_id < DeviceInfo.NumberOfDevices && "Device ID too large");
   initAsyncInfo(AsyncInfo);
