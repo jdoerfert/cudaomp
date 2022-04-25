@@ -273,10 +273,6 @@ inline cudaError_t cudaMemcpy(T *dst, const T *src, size_t count,
 
 inline cudaError_t __cudaMemcpyAsync(void *dst, const void *src, size_t count,
                             cudaMemcpyKind kind, cudaStream_t stream = 0) {
-  if (stream == 0){
-    return __cudaMemcpyAsync(dst, src, count, kind);
-  }
-
   // First , make sure we have at least one nonhost device
   int num_devices = omp_get_num_devices();
 
