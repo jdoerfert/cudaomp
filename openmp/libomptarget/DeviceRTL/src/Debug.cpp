@@ -49,6 +49,15 @@ static int32_t omp_vprintf(const char *Format, void *Arguments, uint32_t) {
 } // namespace impl
 #pragma omp end declare variant
 
+#pragma omp begin declare variant match(device = {kind(cpu)})
+int32_t vprintf(const char *, void *);
+namespace impl {
+static int32_t omp_vprintf(const char *Format, void *Arguments, uint32_t) {
+  return vprintf(Format, Arguments);
+}
+} // namespace impl
+#pragma omp end declare variant
+
 int32_t __llvm_omp_vprintf(const char *Format, void *Arguments, uint32_t Size) {
   return impl::omp_vprintf(Format, Arguments, Size);
 }

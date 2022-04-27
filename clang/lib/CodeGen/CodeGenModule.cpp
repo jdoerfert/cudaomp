@@ -250,7 +250,9 @@ void CodeGenModule::createOpenMPRuntime() {
     OpenMPRuntime.reset(new CGOpenMPRuntimeGPU(*this));
     break;
   default:
-    if (LangOpts.OpenMPSimd)
+    if (getTriple().getVendor() == llvm::Triple::OpenMP_VGPU)
+      OpenMPRuntime.reset(new CGOpenMPRuntimeGPU(*this));
+    else if (LangOpts.OpenMPSimd)
       OpenMPRuntime.reset(new CGOpenMPSIMDRuntime(*this));
     else
       OpenMPRuntime.reset(new CGOpenMPRuntime(*this));

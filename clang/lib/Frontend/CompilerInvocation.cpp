@@ -3906,7 +3906,8 @@ bool CompilerInvocation::ParseLangArgs(LangOptions &Opts, ArgList &Args,
   }
 
   // Set CUDA mode for OpenMP target NVPTX/AMDGCN if specified in options
-  Opts.OpenMPCUDAMode = Opts.OpenMPIsDevice && (T.isNVPTX() || T.isAMDGCN()) &&
+  Opts.OpenMPCUDAMode = Opts.OpenMPIsDevice &&
+                        (T.isNVPTX() || T.isAMDGCN() || T.isOpenMPVGPU()) &&
                         Args.hasArg(options::OPT_fopenmp_cuda_mode);
 
   // Set CUDA mode for OpenMP target NVPTX/AMDGCN if specified in options

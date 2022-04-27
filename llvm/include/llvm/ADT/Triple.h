@@ -168,7 +168,8 @@ public:
     Mesa,
     SUSE,
     OpenEmbedded,
-    LastVendorType = OpenEmbedded
+    OpenMP_VGPU,
+    LastVendorType = OpenMP_VGPU
   };
   enum OSType {
     UnknownOS,
@@ -730,6 +731,9 @@ public:
   bool isNVPTX() const {
     return getArch() == Triple::nvptx || getArch() == Triple::nvptx64;
   }
+
+  /// Tests whether the target is OpenMP VGPU.
+  bool isOpenMPVGPU() const { return getVendor() == llvm::Triple::OpenMP_VGPU; }
 
   /// Tests whether the target is AMDGCN
   bool isAMDGCN() const { return getArch() == Triple::amdgcn; }

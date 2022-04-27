@@ -14,6 +14,7 @@
 #include "Debug.h"
 #include "Interface.h"
 #include "Mapping.h"
+#include "ThreadEnvironment.h"
 
 #pragma omp declare target
 
@@ -32,10 +33,9 @@ __attribute__((used, retain, weak, optnone, cold)) void keepAlive() {
 
 namespace impl {
 
-/// AMDGCN Implementation
+/// AMDGCN/Generic Implementation
 ///
 ///{
-#pragma omp begin declare variant match(device = {arch(amdgcn)})
 
 void Unpack(uint64_t Val, uint32_t *LowBits, uint32_t *HighBits) {
   static_assert(sizeof(unsigned long) == 8, "");
@@ -46,8 +46,6 @@ void Unpack(uint64_t Val, uint32_t *LowBits, uint32_t *HighBits) {
 uint64_t Pack(uint32_t LowBits, uint32_t HighBits) {
   return (((uint64_t)HighBits) << 32) | (uint64_t)LowBits;
 }
-
-#pragma omp end declare variant
 
 /// NVPTX Implementation
 ///
@@ -112,6 +110,24 @@ int32_t shuffleDown(uint64_t Mask, int32_t Var, uint32_t Delta, int32_t Width) {
 
 #pragma omp end declare variant
 } // namespace impl
+
+/// Virtual GPU Implementation
+///
+///{
+#pragma omp begin declare variant match(device = {kind(cpu)})
+
+namespace impl {
+
+int32_t shuffle(uint64_t Mask, int32_t Var, int32_t SrcLane) {
+  return getThreadEnvironment()->shuffle(Mask, Var, SrcLane);
+}
+
+int32_t shuffleDown(uint64_t Mask, int32_t Var, uint32_t Delta, int32_t Width) {
+  return getThreadEnvironment()->shuffleDown(Mask, Var, Delta);
+}
+
+} // namespace impl
+#pragma omp end declare variant
 
 uint64_t utils::pack(uint32_t LowBits, uint32_t HighBits) {
   return impl::Pack(LowBits, HighBits);

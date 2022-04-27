@@ -1119,10 +1119,11 @@ static void setPropertyExecutionMode(CodeGenModule &CGM, StringRef Name,
   CGM.addCompilerUsedGlobal(GVMode);
 }
 
-void CGOpenMPRuntimeGPU::createOffloadEntry(llvm::Constant *ID,
-                                              llvm::Constant *Addr,
-                                              uint64_t Size, int32_t,
-                                              llvm::GlobalValue::LinkageTypes) {
+void CGOpenMPRuntimeGPU::createOffloadEntry(
+    llvm::Constant *ID, llvm::Constant *Addr, uint64_t Size, int32_t Flags,
+    llvm::GlobalValue::LinkageTypes Linkage) {
+  if (CGM.getTarget().getTriple().getVendor() == llvm::Triple::OpenMP_VGPU)
+    return CGOpenMPRuntime::createOffloadEntry(ID, Addr, Size, Flags, Linkage);
   // TODO: Add support for global variables on the device after declare target
   // support.
   llvm::Function *Fn = dyn_cast<llvm::Function>(Addr);

@@ -3163,4 +3163,13 @@ void Generic_ELF::addClangTargetOptions(const ArgList &DriverArgs,
   if (!DriverArgs.hasFlag(options::OPT_fuse_init_array,
                           options::OPT_fno_use_init_array, true))
     CC1Args.push_back("-fno-use-init-array");
+
+  if (DriverArgs.hasArg(options::OPT_S))
+    return;
+
+  if (getTriple().getVendor() == llvm::Triple::OpenMP_VGPU) {
+    std::string BitcodeSuffix = getTripleString() + "-openmp_vgpu";
+    clang::driver::tools::addOpenMPDeviceRTL(getDriver(), DriverArgs, CC1Args,
+                                             BitcodeSuffix, getTriple());
+  }
 }

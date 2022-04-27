@@ -21,16 +21,21 @@
 #include <mutex>
 #include <string>
 
-// List of all plugins that can support offloading.
-static const char *RTLNames[] = {
-    /* PowerPC target       */ "libomptarget.rtl.ppc64.so",
-    /* x86_64 target        */ "libomptarget.rtl.x86_64.so",
-    /* CUDA target          */ "libomptarget.rtl.cuda.so",
-    /* AArch64 target       */ "libomptarget.rtl.aarch64.so",
-    /* SX-Aurora VE target  */ "libomptarget.rtl.ve.so",
-    /* AMDGPU target        */ "libomptarget.rtl.amdgpu.so",
-    /* Remote target        */ "libomptarget.rtl.rpc.so",
+struct PluginInfoTy {
+  std::string Name;
+  bool IsHost;
 };
+
+// List of all plugins that can support offloading.
+static const PluginInfoTy Plugins[] = {
+    /* PowerPC target       */ {"libomptarget.rtl.ppc64.so", true},
+    /* x86_64 target        */ {"libomptarget.rtl.x86_64.so", true},
+    /* CUDA target          */ {"libomptarget.rtl.cuda.so", false},
+    /* AArch64 target       */ {"libomptarget.rtl.aarch64.so", true},
+    /* SX-Aurora VE target  */ {"libomptarget.rtl.ve.so", false},
+    /* AMDGPU target        */ {"libomptarget.rtl.amdgpu.so", false},
+    /* Remote target        */ {"libomptarget.rtl.rpc.so", false},
+    /* Virtual GPU target   */ {"libomptarget.rtl.vgpu.so", false}};
 
 PluginManager *PM;
 
@@ -86,21 +91,37 @@ void RTLsTy::LoadRTLs() {
     return;
   }
 
+  // TODO: add ability to inspect image and decide automatically
+  bool UseVGPU = false;
+  if (auto *EnvFlag = std::getenv("LIBOMPTARGET_USE_VGPU"))
+    UseVGPU = true;
+
   DP("Loading RTLs...\n");
 
   // Attempt to open all the plugins and, if they exist, check if the interface
   // is correct and if they are supporting any devices.
-  for (auto *Name : RTLNames) {
-    DP("Loading library '%s'...\n", Name);
-    void *dynlib_handle = dlopen(Name, RTLD_NOW);
+  for (auto &[Name, IsHost] : Plugins) {
+    DP("Loading library '%s'...\n", Name.c_str());
 
-    if (!dynlib_handle) {
-      // Library does not exist or cannot be found.
-      DP("Unable to load library '%s': %s!\n", Name, dlerror());
+    int Flags = RTLD_NOW;
+
+    if (Name.compare("libomptarget.rtl.vgpu.so") == 0)
+      Flags |= RTLD_GLOBAL;
+
+    if (UseVGPU && IsHost) {
+      DP("Skipping library '%s': VGPU was requested.\n", Name.c_str());
       continue;
     }
 
-    DP("Successfully loaded library '%s'!\n", Name);
+    void *dynlib_handle = dlopen(Name.c_str(), Flags);
+
+    if (!dynlib_handle) {
+      // Library does not exist or cannot be found.
+      DP("Unable to load library '%s': %s!\n", Name.c_str(), dlerror());
+      continue;
+    }
+
+    DP("Successfully loaded library '%s'!\n", Name.c_str());
 
     AllRTLs.emplace_back();
 

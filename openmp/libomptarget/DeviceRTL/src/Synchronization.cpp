@@ -16,6 +16,7 @@
 #include "Interface.h"
 #include "Mapping.h"
 #include "State.h"
+#include "ThreadEnvironment.h"
 #include "Types.h"
 #include "Utils.h"
 
@@ -282,6 +283,64 @@ void setLock(omp_lock_t *Lock) {
 ///}
 
 } // namespace impl
+
+/// Virtual GPU Implementation
+///
+///{
+#pragma omp begin declare variant match(device = {kind(cpu)})
+
+namespace impl {
+
+uint32_t atomicInc(uint32_t *Address, uint32_t Val, int Ordering) {
+  return VGPUImpl::atomicInc(Address, Val, Ordering);
+}
+
+void namedBarrierInit() {}
+
+void namedBarrier() {
+  uint32_t NumThreads = omp_get_num_threads();
+  ASSERT(NumThreads % mapping::getWarpSize() == 0);
+  getThreadEnvironment()->namedBarrier(true);
+}
+
+void fenceTeam(int Ordering) { getThreadEnvironment()->fenceTeam(Ordering); }
+
+void fenceKernel(int Ordering) {
+  getThreadEnvironment()->fenceKernel(Ordering);
+}
+
+// Simply call fenceKernel because there is no need to sync with host
+void fenceSystem(int Ordering) { fenceKernel(Ordering); }
+
+void syncWarp(__kmpc_impl_lanemask_t Mask) {
+  getThreadEnvironment()->syncWarp(Mask);
+}
+
+void syncThreads() { getThreadEnvironment()->namedBarrier(false); }
+
+constexpr uint32_t OMP_SPIN = 1000;
+constexpr uint32_t UNSET = 0;
+constexpr uint32_t SET = 1;
+
+// TODO: This seems to hide a bug in the declare variant handling. If it is
+// called before it is defined
+//       here the overload won't happen. Investigate lalter!
+void unsetLock(omp_lock_t *Lock) { VGPUImpl::unsetLock((uint32_t *)Lock); }
+
+int testLock(omp_lock_t *Lock) { return VGPUImpl::testLock((uint32_t *)Lock); }
+
+void initLock(omp_lock_t *Lock) { VGPUImpl::initLock((uint32_t *)Lock); }
+
+void destroyLock(omp_lock_t *Lock) { VGPUImpl::destroyLock((uint32_t *)Lock); }
+
+void setLock(omp_lock_t *Lock) { VGPUImpl::setLock((uint32_t *)Lock); }
+
+void syncThreadsAligned() {}
+
+} // namespace impl
+
+#pragma omp end declare variant
+///}
 
 void synchronize::init(bool IsSPMD) {
   if (!IsSPMD)

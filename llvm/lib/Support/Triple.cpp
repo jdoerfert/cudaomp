@@ -193,6 +193,8 @@ StringRef Triple::getVendorTypeName(VendorType Kind) {
   case PC: return "pc";
   case SCEI: return "scei";
   case SUSE: return "suse";
+  case OpenMP_VGPU:
+    return "openmp_vgpu";
   }
 
   llvm_unreachable("Invalid VendorType!");
@@ -526,22 +528,23 @@ static Triple::ArchType parseArch(StringRef ArchName) {
 
 static Triple::VendorType parseVendor(StringRef VendorName) {
   return StringSwitch<Triple::VendorType>(VendorName)
-    .Case("apple", Triple::Apple)
-    .Case("pc", Triple::PC)
-    .Case("scei", Triple::SCEI)
-    .Case("sie", Triple::SCEI)
-    .Case("fsl", Triple::Freescale)
-    .Case("ibm", Triple::IBM)
-    .Case("img", Triple::ImaginationTechnologies)
-    .Case("mti", Triple::MipsTechnologies)
-    .Case("nvidia", Triple::NVIDIA)
-    .Case("csr", Triple::CSR)
-    .Case("myriad", Triple::Myriad)
-    .Case("amd", Triple::AMD)
-    .Case("mesa", Triple::Mesa)
-    .Case("suse", Triple::SUSE)
-    .Case("oe", Triple::OpenEmbedded)
-    .Default(Triple::UnknownVendor);
+      .Case("apple", Triple::Apple)
+      .Case("pc", Triple::PC)
+      .Case("scei", Triple::SCEI)
+      .Case("sie", Triple::SCEI)
+      .Case("fsl", Triple::Freescale)
+      .Case("ibm", Triple::IBM)
+      .Case("img", Triple::ImaginationTechnologies)
+      .Case("mti", Triple::MipsTechnologies)
+      .Case("nvidia", Triple::NVIDIA)
+      .Case("csr", Triple::CSR)
+      .Case("myriad", Triple::Myriad)
+      .Case("amd", Triple::AMD)
+      .Case("mesa", Triple::Mesa)
+      .Case("suse", Triple::SUSE)
+      .Case("oe", Triple::OpenEmbedded)
+      .Case("openmp_vgpu", Triple::OpenMP_VGPU)
+      .Default(Triple::UnknownVendor);
 }
 
 static Triple::OSType parseOS(StringRef OSName) {

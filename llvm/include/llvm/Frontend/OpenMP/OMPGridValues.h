@@ -114,6 +114,38 @@ static constexpr GV NVPTXGridValues = {
     128,  // GV_Default_WG_Size
 };
 
+/// For Virtual GPUs
+static constexpr GV VirtualGpuGridValues = {
+    256,  // GV_Slot_Size
+    32,   // GV_Warp_Size
+    1024, // GV_Max_Teams
+    896,  // GV_SimpleBufferSize
+    1024, // GV_Max_WG_Size
+    128,  // GV_Defaut_WG_Size
+};
+
+static const unsigned OpenMPVGPUAddrSpaceMap[] = {
+    0,   // Default
+    1,   // opencl_global
+    3,   // opencl_local
+    4,   // opencl_constant
+    0,   // opencl_private
+    0,   // opencl_generic
+    1,   // opencl_global_device
+    1,   // opencl_global_host
+    1,   // cuda_device
+    4,   // cuda_constant
+    3,   // cuda_shared
+    1,   // sycl_global
+    0,   // sycl_global_device
+    0,   // sycl_global_host
+    3,   // sycl_local
+    0,   // sycl_private
+    270, // ptr32_sptr
+    271, // ptr32_uptr
+    272  // ptr64
+};
+
 } // namespace omp
 } // namespace llvm
 

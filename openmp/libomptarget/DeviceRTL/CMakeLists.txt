@@ -162,9 +162,8 @@ function(compileDeviceRTLLibrary target_cpu target_name)
 
     add_custom_command(OUTPUT ${outfile}
       COMMAND ${CLANG_TOOL}
-      ${bc_flags}
-      -Xclang -target-cpu -Xclang ${target_cpu}
       ${target_bc_flags}
+      ${bc_flags}
       ${infile} -o ${outfile}
       DEPENDS ${infile} ${include_files}
       IMPLICIT_DEPENDS CXX ${infile}
@@ -234,10 +233,13 @@ endfunction()
 # Generate a Bitcode library for all the compute capabilities the user requested
 add_custom_target(omptarget.devicertl.nvptx)
 foreach(sm ${nvptx_sm_list})
-  compileDeviceRTLLibrary(sm_${sm} nvptx -target nvptx64-nvidia-cuda -Xclang -target-feature -Xclang +ptx61 "-D__CUDA_ARCH__=${sm}0")
+  compileDeviceRTLLibrary(sm_${sm} nvptx -Xclang -target-cpu -Xclang sm_${sm} -target nvptx64-nvidia-cuda -Xclang -target-feature -Xclang +ptx61 "-D__CUDA_ARCH__=${sm}0")
 endforeach()
 
 add_custom_target(omptarget.devicertl.amdgpu)
 foreach(mcpu ${amdgpu_mcpus})
-  compileDeviceRTLLibrary(${mcpu} amdgpu -target amdgcn-amd-amdhsa -D__AMDGCN__ -nogpulib)
+  compileDeviceRTLLibrary(${mcpu} amdgpu -Xclang -target-cpu -Xclang ${mcpu} -target amdgcn-amd-amdhsa -D__AMDGCN__ -nogpulib)
 endforeach()
+
+add_custom_target(omptarget.devicertl.vgpu)
+compileDeviceRTLLibrary(x86_64 vgpu -target x86_64-vgpu -std=c++20 -I${devicertl_base_directory}/../plugins/vgpu/src)

@@ -17,6 +17,7 @@
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Basic/TargetOptions.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/Frontend/OpenMP/OMPGridValues.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/X86TargetParser.h"
 
@@ -393,6 +394,10 @@ public:
 
   uint64_t getPointerAlignV(unsigned AddrSpace) const override {
     return getPointerWidthV(AddrSpace);
+  }
+
+  const llvm::omp::GV &getGridValue() const override {
+    return llvm::omp::VirtualGpuGridValues;
   }
 };
 

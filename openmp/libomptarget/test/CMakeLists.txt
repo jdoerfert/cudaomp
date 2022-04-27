@@ -18,6 +18,9 @@ string(REPLACE " " ";" LIBOMPTARGET_LIT_ARG_LIST "${LIBOMPTARGET_LIT_ARGS}")
 
 string(REGEX MATCHALL "([^\ ]+\ |[^\ ]+$)" SYSTEM_TARGETS "${LIBOMPTARGET_SYSTEM_TARGETS}")
 foreach(CURRENT_TARGET IN LISTS SYSTEM_TARGETS)
+  IF ("${CURRENT_TARGET}" MATCHES "-vgpu")
+    continue()
+  ENDIF()
   string(STRIP "${CURRENT_TARGET}" CURRENT_TARGET)
   add_openmp_testsuite(check-libomptarget-${CURRENT_TARGET}
     "Running libomptarget tests"

@@ -151,6 +151,9 @@ TargetInfo::TargetInfo(const llvm::Triple &T) : Triple(T) {
 
   MaxOpenCLWorkGroupSize = 1024;
   ProgramAddrSpace = 0;
+
+  if (Triple.getVendor() == llvm::Triple::OpenMP_VGPU)
+    AddrSpaceMap = &llvm::omp::OpenMPVGPUAddrSpaceMap;
 }
 
 // Out of line virtual dtor for TargetInfo.
